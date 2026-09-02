@@ -22,7 +22,15 @@ async function main(): Promise<void> {
   assertUsableConfig();
 
   const ctx = createContext();
-  const scheduler = new Scheduler();
+  /*
+   * Store-backed so a deferred job's interval survives a restart. Without it
+   * the speed test's three-hour countdown started again on every boot, and a
+   * machine restarted more often than that never ran one at all.
+   */
+  const scheduler = new Scheduler({
+    load: (job) => ctx.db.jobLastRun(job),
+    save: (job, ts) => ctx.db.setJobLastRun(job, ts),
+  });
 
   /*
    * Before anything else, work out whether we were away. A gap in the
@@ -61,7 +69,9 @@ async function main(): Promise<void> {
     () => collectSpeedtest(ctx),
     // Deliberately not immediate: a speed test during startup competes with
     // every other collector's first run and returns a pessimistic number that
-    // then sits at the head of the chart forever.
+    // then sits at the head of the chart forever. One that is already overdue
+    // still runs shortly after boot rather than waiting out another full
+    // interval - see `Scheduler.dueIn`.
     false,
   );
   scheduler.add(

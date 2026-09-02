@@ -96,6 +96,28 @@ export class Db {
       .run(k, v);
   }
 
+  // -- collector schedule --------------------------------------------------
+
+  /*
+   * When a collector last ran, so its interval survives a restart. See the
+   * note on `Scheduler.dueIn`, which is the only thing that reads it back.
+   *
+   * In `meta` rather than a table of its own: it is one integer per job and
+   * there are five jobs, so a table would be a migration and an index to hold
+   * five rows. A job that is renamed or dropped leaves a stale key behind,
+   * which costs nothing and is never read again.
+   */
+  jobLastRun(name: string): number | null {
+    const raw = this.getMeta(`job:last_run:${name}`);
+    if (raw === null) return null;
+    const ts = Number(raw);
+    return Number.isFinite(ts) ? ts : null;
+  }
+
+  setJobLastRun(name: string, ts: number): void {
+    this.setMeta(`job:last_run:${name}`, String(ts));
+  }
+
   // -- optical -------------------------------------------------------------
 
   insertOptical(s: OpticalSample): void {
