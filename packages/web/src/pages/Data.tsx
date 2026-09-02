@@ -1,9 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   formatBps,
   formatBytes,
   type OpticalSample,
-  type OpticalTrend,
   type ProbeSample,
   type SpeedtestSample,
   type ThroughputPoint,
@@ -361,18 +360,36 @@ function Diagnostics(): React.JSX.Element {
   const [hours, setHours] = useState(24);
 
   return (
-    <>
-      <div className="section-head">
-        <h2>Diagnostics</h2>
-        <Segmented label="Period" value={hours} onChange={setHours} options={RANGES} />
-      </div>
-      <p className="section-note">
+    /*
+      One surface for the section. The period switcher sets the window for both
+      readings under it, so it has to sit inside the box it governs; floating
+      above two separate cards it belonged to neither of them.
+    */
+    <Card
+      title="Diagnostics"
+      action={<Segmented label="Period" value={hours} onChange={setHours} options={RANGES} />}
+    >
+      <p className="card-note">
         The evidence half of the screen. These are the readings to quote at a support desk, because
         they say whether a bad hour was the fibre, the route out, or something inside the flat.
       </p>
       <Optical hours={hours} />
       <Latency hours={hours} />
-    </>
+    </Card>
+  );
+}
+
+/**
+ * A named reading inside a card. Diagnostics holds two of them, and they are
+ * told apart by a rule and a heading rather than by a second box: a stroked
+ * panel inside a panel is the nesting the card exists to avoid.
+ */
+function Block({ title, children }: { title: string; children: ReactNode }): React.JSX.Element {
+  return (
+    <section className="block">
+      <h3>{title}</h3>
+      {children}
+    </section>
   );
 }
 
@@ -382,129 +399,90 @@ function Optical({ hours }: { hours: number }): React.JSX.Element {
     `/optical?hours=${hours}`,
     [hours],
   );
-  const trend = useApi<OpticalTrend>('/optical/trend?days=30');
 
   return (
-    <>
-      <Async state={optical}>
-        {(data) => {
-          const ts = data.points.map((p) => ('ts' in p ? p.ts : p.hour));
-          const rx = data.points.map((p) => ('ts' in p ? p.rxPower : p.rx));
-          const valid = rx.filter((v): v is number => v !== null && Number.isFinite(v));
+    <Async state={optical}>
+      {(data) => {
+        const ts = data.points.map((p) => ('ts' in p ? p.ts : p.hour));
+        const rx = data.points.map((p) => ('ts' in p ? p.rxPower : p.rx));
+        const valid = rx.filter((v): v is number => v !== null && Number.isFinite(v));
 
-          // `at(-1)` on an empty array is undefined, which is what made every
-          // read of this value a type error before.
-          const latest = valid.length > 0 ? (valid[valid.length - 1] as number) : null;
-          const low = valid.length > 0 ? Math.min(...valid) : null;
-          const high = valid.length > 0 ? Math.max(...valid) : null;
+        // `at(-1)` on an empty array is undefined, which is what made every
+        // read of this value a type error before.
+        const latest = valid.length > 0 ? (valid[valid.length - 1] as number) : null;
+        const low = valid.length > 0 ? Math.min(...valid) : null;
+        const high = valid.length > 0 ? Math.max(...valid) : null;
 
-          const tone =
-            latest === null ? 'neutral' : latest >= -25 ? 'good' : latest >= -27 ? 'warn' : 'bad';
-          const verdict =
-            latest === null
-              ? 'No optical reading'
-              : latest >= -25
-                ? 'Healthy signal'
-                : latest >= -27
-                  ? 'Weak but in sync'
-                  : 'Below the sync threshold';
+        const tone =
+          latest === null ? 'neutral' : latest >= -25 ? 'good' : latest >= -27 ? 'warn' : 'bad';
+        const verdict =
+          latest === null
+            ? 'No optical reading'
+            : latest >= -25
+              ? 'Healthy signal'
+              : latest >= -27
+                ? 'Weak but in sync'
+                : 'Below the sync threshold';
 
-          const series: ChartSeries[] = [
-            { label: 'Received power', values: rx, color: seriesColor(theme, 0), area: true },
-          ];
+        const series: ChartSeries[] = [
+          { label: 'Received power', values: rx, color: seriesColor(theme, 0), area: true },
+        ];
 
-          if (data.resolution === 'hourly') {
-            const h = data.points as HourlyOptical[];
-            series.push(
-              {
-                label: 'Hourly low',
-                values: h.map((p) => p.rxMin),
-                color: seriesColor(theme, 0),
-                subdued: true,
-              },
-              {
-                label: 'Hourly high',
-                values: h.map((p) => p.rxMax),
-                color: seriesColor(theme, 0),
-                subdued: true,
-              },
-            );
-          }
-
-          return (
-            <Card title="Fibre signal">
-              <Hero
-                value={latest === null ? 'No link' : latest.toFixed(1)}
-                unit={latest === null ? undefined : 'dBm'}
-                tone={tone}
-                caption={verdict}
-              />
-
-              {/* Where this reading sits between losing sync and a perfect line. */}
-              <Meter
-                fraction={latest === null ? 0 : (latest - SYNC_FLOOR) / (HEALTHY_TOP - SYNC_FLOOR)}
-                tone={tone === 'neutral' ? 'accent' : tone}
-              />
-              <div className="scale-ends">
-                <span>{SYNC_FLOOR} dBm · loses sync</span>
-                <span>{HEALTHY_TOP} dBm · ideal</span>
-              </div>
-
-              <TimeChart
-                timestamps={ts}
-                series={series}
-                height={200}
-                format={(v) => `${v.toFixed(1)} dBm`}
-                threshold={{ value: SYNC_FLOOR, label: 'Sync threshold' }}
-                emptyMessage="No optical readings for this period."
-              />
-
-              <StatGrid>
-                <Stat label="Best" value={high === null ? '—' : `${high.toFixed(1)} dBm`} />
-                <Stat label="Worst" value={low === null ? '—' : `${low.toFixed(1)} dBm`} />
-                <Stat label="Readings" value={valid.length} />
-              </StatGrid>
-            </Card>
+        if (data.resolution === 'hourly') {
+          const h = data.points as HourlyOptical[];
+          series.push(
+            {
+              label: 'Hourly low',
+              values: h.map((p) => p.rxMin),
+              color: seriesColor(theme, 0),
+              subdued: true,
+            },
+            {
+              label: 'Hourly high',
+              values: h.map((p) => p.rxMax),
+              color: seriesColor(theme, 0),
+              subdued: true,
+            },
           );
-        }}
-      </Async>
+        }
 
-      <Card title="Drift over 30 days">
-        <Async state={trend}>
-          {(t) => (
-            <>
-              {/*
-                A sentence with a state dot, not a coloured panel. The card's
-                three numbers are directly below it and carry their own tone;
-                a filled box on top of them was the same verdict a third time,
-                in the loudest form the app has.
-              */}
-              <p className="verdict" data-tone={t.degrading ? 'bad' : 'good'}>
-                <span className="beacon" />
-                <span>{t.verdict}</span>
-              </p>
-              <StatGrid>
-                <Stat
-                  label="Average signal"
-                  value={t.meanRx === null ? '—' : `${t.meanRx} dBm`}
-                  tone={t.meanRx !== null && t.meanRx >= -25 ? 'good' : 'warn'}
-                />
-                <Stat
-                  label="Change per day"
-                  value={
-                    t.slopePerDay === null
-                      ? '—'
-                      : `${t.slopePerDay > 0 ? '+' : ''}${t.slopePerDay.toFixed(3)} dB`
-                  }
-                  tone={t.degrading ? 'bad' : 'good'}
-                />
-                <Stat label="Readings" value={t.samples} hint={`over ${t.windowDays} days`} />
-              </StatGrid>
-            </>
-          )}
-        </Async>
-      </Card>
-    </>
+        return (
+          <Block title="Fibre signal">
+            <Hero
+              value={latest === null ? 'No link' : latest.toFixed(1)}
+              unit={latest === null ? undefined : 'dBm'}
+              tone={tone}
+              caption={verdict}
+            />
+
+            {/* Where this reading sits between losing sync and a perfect line. */}
+            <Meter
+              fraction={latest === null ? 0 : (latest - SYNC_FLOOR) / (HEALTHY_TOP - SYNC_FLOOR)}
+              tone={tone === 'neutral' ? 'accent' : tone}
+            />
+            <div className="scale-ends">
+              <span>{SYNC_FLOOR} dBm · loses sync</span>
+              <span>{HEALTHY_TOP} dBm · ideal</span>
+            </div>
+
+            <TimeChart
+              timestamps={ts}
+              series={series}
+              height={200}
+              format={(v) => `${v.toFixed(1)} dBm`}
+              threshold={{ value: SYNC_FLOOR, label: 'Sync threshold' }}
+              emptyMessage="No optical readings for this period."
+            />
+
+            <StatGrid>
+              <Stat label="Best" value={high === null ? '—' : `${high.toFixed(1)} dBm`} />
+              <Stat label="Worst" value={low === null ? '—' : `${low.toFixed(1)} dBm`} />
+              <Stat label="Readings" value={valid.length} />
+            </StatGrid>
+          </Block>
+        );
+      }}
+    </Async>
   );
 }
 
@@ -554,7 +532,7 @@ function Latency({ hours }: { hours: number }): React.JSX.Element {
   }, [points]);
 
   return (
-    <Card title="Round trip by hop">
+    <Block title="Round trip by hop">
       <Async state={probes}>
         {() => (
           <>
@@ -588,6 +566,6 @@ function Latency({ hours }: { hours: number }): React.JSX.Element {
           </>
         )}
       </Async>
-    </Card>
+    </Block>
   );
 }

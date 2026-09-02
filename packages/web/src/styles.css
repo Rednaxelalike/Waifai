@@ -54,9 +54,18 @@
 
   /*
    * Light theme. Discord's light surfaces run white -> #F2F3F5 -> #EBEDEF ->
-   * #E3E5E8 -> #DBDEE1, and the page sits one step below the cards on it.
+   * #E3E5E8 -> #DBDEE1, and the page sits below the white cards on it. The
+   * step is deliberately far smaller than Discord's: #FCFDFD is about one
+   * percent off white, which is enough for a card edge to be visible without
+   * the ground reading as a grey panel of its own. The 1px ring inside
+   * `--shadow-card` still does most of the separating, so keep it - at this
+   * distance the fill alone would not hold the cards apart.
+   *
+   * The ramp below is untouched: `--surface-2` and everything under it are
+   * still the steps, and they are what a block nested inside a card uses to
+   * separate itself. Only the ground moved.
    */
-  --page: #f2f3f5;
+  --page: #fcfdfd;
   --surface: #ffffff;
   --surface-2: #f2f3f5;
   --surface-3: #ebedef;
@@ -118,6 +127,14 @@
    */
   --lane-down: #12996a;
   --lane-up: #c4384f;
+  /*
+   * The latency lane. It is the blue the round-trip chart on Data leads with -
+   * slot 0 of the categorical ramp - so the shape under "Latency" on Home and
+   * the line the reader meets when they go looking for it are the same colour.
+   * It has to be a third hue rather than a tint of the other two: the pair
+   * below is a direction, and latency is not one.
+   */
+  --lane-ping: #2a78d6;
 
   /*
    * Discord's tooltip is the same near-black in both themes - it is a thing
@@ -277,6 +294,7 @@
 
   --lane-down: #3bc489;
   --lane-up: #e8606e;
+  --lane-ping: #3987e5;
 
   /* Dark elevation is a real shadow, because there is nothing to step against. */
   --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.2), 0 2px 0 rgba(0, 0, 0, 0.08);
@@ -3430,17 +3448,19 @@ code {
   min-width: 0;
 }
 
-/* A tinted disc, not a logo. The app has no mark for someone else's network. */
-.line-disc {
-  display: grid;
-  place-items: center;
+/*
+ * The gateway's portrait, where a tinted disc used to be. It needs no plate
+ * behind it - the art carries its own gradients and contact shadow, and a
+ * wash-filled circle under a lit object reads as two backgrounds.
+ *
+ * The negative margins take back the portrait's own whitespace: the drawing
+ * is a 30-unit-wide object on a 64-unit square canvas, so about ten pixels of
+ * empty frame sit on each side at this size. Without them the mark floats off
+ * the card's padding edge and twice the gap from the name.
+ */
+.line-mark {
   flex: none;
-  width: 34px;
-  height: 34px;
-  border-radius: var(--r-full);
-  background: var(--accent-wash);
-  box-shadow: inset 0 0 0 1px var(--accent-edge);
-  color: var(--accent-ink);
+  margin: -4px -10px;
 }
 
 .line-name {
@@ -3486,8 +3506,14 @@ code {
  *
  * Two rings and a wash: a solid inner edge that makes it an object, and a
  * softer ring outside it that is the whole reason the eye lands here first.
- * It is drawn in the accent rather than in green - green on this screen means
- * a verdict about the line, and a button is not a verdict.
+ *
+ * Green, by request. It was drawn in the accent for a reason worth writing
+ * down before it is changed again: green elsewhere on this screen is a verdict
+ * about the line - "the light is on", "the line is up" - and a button is not a
+ * verdict. What keeps that from misfiring here is that this is the only round
+ * green object on the page, it carries a speedometer rather than a tick, and
+ * the word under it is an instruction. If a green pill or dot ever lands in
+ * this strip, that is the moment to take this back to the accent.
  */
 .dial {
   display: flex;
@@ -3507,10 +3533,10 @@ code {
   height: 62px;
   border-radius: var(--r-full);
   background: var(--surface);
-  color: var(--accent-ink);
+  color: var(--good-ink);
   box-shadow:
-    inset 0 0 0 2px var(--accent-edge),
-    0 0 0 5px var(--accent-wash);
+    inset 0 0 0 2px var(--good-edge),
+    0 0 0 5px var(--good-wash);
   transition:
     transform var(--d-fast) var(--ease-standard),
     box-shadow var(--d-fast) var(--ease-standard);
@@ -3519,8 +3545,8 @@ code {
 .dial:active .dial-ring {
   transform: scale(0.94);
   box-shadow:
-    inset 0 0 0 2px var(--accent),
-    0 0 0 5px var(--accent-wash);
+    inset 0 0 0 2px var(--good),
+    0 0 0 5px var(--good-wash);
 }
 
 .dial:disabled {
@@ -3540,10 +3566,20 @@ code {
  * doing the telling apart, so they come first.
  */
 .line-figures {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 6px 12px;
+  /*
+   * Even columns rather than `space-between`, because each pair has a shape
+   * under it and a shape has to be given a width - left to size itself off the
+   * words above it, the wider label would have drawn the longer chart.
+   *
+   * Three of them now. On a 375px phone that is a 97px column, which the
+   * longest reading here - "25.4 Mbps" - clears at about 63px because the unit
+   * and the decimal are set down (see `.fig-u`). The column gap comes down
+   * from 12px to 10px to pay for the extra divide.
+   */
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: start;
+  gap: 6px 10px;
   padding-top: 12px;
   border-top: 1px solid var(--hairline);
 }
@@ -3553,52 +3589,85 @@ code {
 }
 
 /*
- * Wrapping, not a breakpoint.
+ * Stacked, and always - label, then value, then the shape.
  *
- * A pair that cannot fit on one line stacks its own label over its own value.
- * The first attempt at this was a `max-width: 340px` media query, which never
- * fired: nothing here could shrink, so the strip set the page's width instead
- * of the page setting the strip's, the layout viewport came out wider than the
- * screen, and every card on Home was clipped down the right-hand edge. Letting
- * the pair wrap drops its min-content width to the wider of the two lines and
- * the whole page fits again.
+ * This used to be a wrapping row that only stacked when it ran out of room,
+ * which worked while the strip was two pairs of words sharing its full width.
+ * In half of it they no longer wrap alike: "DOWNLOAD" is four characters
+ * longer than "UPLOAD", so the left pair broke and the right one did not, and
+ * the two charts came to rest at different heights. Stacking both is what
+ * makes them a pair again.
+ *
+ * It also keeps the fix this rule was written for. The first attempt was a
+ * `max-width: 340px` media query, which never fired: nothing here could
+ * shrink, so the strip set the page's width instead of the page setting the
+ * strip's, the layout viewport came out wider than the screen, and every card
+ * on Home was clipped down the right-hand edge. A column's min-content width
+ * is the widest of its three lines, which is narrower still than the wrap was.
  */
 .line-figure {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 2px 8px;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
   font-size: 17px;
   font-weight: 700;
 }
 
-/* Once the pair stacks, the right-hand one hugs the edge it was pushed to. */
-.line-figure:last-child {
-  justify-content: flex-end;
-  text-align: right;
+/*
+ * The three lanes are told apart by hue, not only by a word.
+ *
+ * Drawn in one colour the pair would be decoration: side by side they are two
+ * squiggles of the same shape, and you would have to go back up to the label
+ * to learn which one you were reading. This is the one place the app spends
+ * green and red on something that is not a verdict - see the note on
+ * `DIRECTIONAL` in lib/palette.ts for why that is safe here, which comes down
+ * to every shape still sitting under its own arrow and its own word.
+ *
+ * Green is the download because that is the number people equate with "is the
+ * internet working", and a healthy download painted red reads as an alarm.
+ *
+ * Latency takes a blue, which is not a direction and is not meant to read as
+ * one. It also keeps it clear of the green now on the dial: a green shape and
+ * a green button in the same strip would be one signal, and they are not.
+ */
+.line-figure[data-dir='down'] {
+  --lane: var(--lane-down);
 }
+
+.line-figure[data-dir='up'] {
+  --lane: var(--lane-up);
+}
+
+.line-figure[data-dir='ping'] {
+  --lane: var(--lane-ping);
+}
+
 
 /*
  * The arrow leads the word, and both sit in the same faint ink. It is the
  * quiet half of the pair - the figure beside it is what is being read - so the
- * glyph is not given the lane's green or red the way the `Flow` lanes are.
- * Two of these in a row across a 16px strip would be decoration.
+ * glyph is not given the lane's hue the way the shape beneath it is. Three of
+ * these in a row across a 16px strip would be decoration.
  */
 .line-figure-label {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  /*
+   * A size up from the 11px this was set at, because it is sentence case now.
+   * The tracking went with the capitals - 0.06em is what opens uppercase up
+   * enough to be read at a small size, and on lower case it only loosens words
+   * that were already legible.
+   */
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--ink-faint);
 }
 
 .line-figure-label svg {
   flex: none;
-  /* The cap height of 11px uppercase, not the 12px box the glyph is drawn in. */
+  /* Centred on the x-height of the word, not on the box the glyph is drawn in. */
   margin-top: -1px;
 }
 
@@ -3628,69 +3697,7 @@ code {
   margin: 2px 0 -4px;
 }
 
-/* -- flow ------------------------------------------------------------------ */
-
-/*
- * Two lanes, each a number with the last hour behind it. The shape is the
- * point: it says whether the current quiet is a lull or the whole evening,
- * which two labels reading "Idle" never could.
- */
-.flow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.flow-lane {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  padding: 11px 11px 7px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--panel-edge);
-}
-
-/*
- * The two directions are told apart by hue, not only by a word.
- *
- * Both lanes drew the same blurple, which made the pair decoration: side by
- * side they were two identical squiggles, and you had to go back up to the
- * label to learn which one you were reading. This is the one place the app
- * spends green and red on something that is not a verdict - see the note on
- * `DIRECTIONAL` in lib/palette.ts for why it is safe here, which comes down to
- * every lane still carrying its arrow and its word.
- *
- * Green is the download because that is the number people equate with "is the
- * internet working", and a healthy download painted red reads as an alarm.
- */
-.flow-lane[data-dir='down'] {
-  --lane: var(--lane-down);
-}
-
-.flow-lane[data-dir='up'] {
-  --lane: var(--lane-up);
-}
-
-.flow-head {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 13px;
-  color: var(--ink-muted);
-}
-
-.flow-value {
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1.15;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Only the figure that is actually moving takes the lane's colour. */
-.flow-value.is-live {
-  color: var(--lane, var(--accent-ink));
-}
+/* -- the sparklines under the line strip ----------------------------------- */
 
 .spark {
   width: 100%;
@@ -3713,36 +3720,35 @@ code {
   stroke-linejoin: round;
 }
 
-/* The collapsed form: when nothing is moving, the card gives its space back. */
-.quiet-line {
-  font-size: 14px;
-  color: var(--ink-muted);
-  padding: 2px 2px 0;
-}
-
-/* -- section heads --------------------------------------------------------- */
+/* -- blocks inside a card -------------------------------------------------- */
 
 /*
- * For a group of cards that share one control, where a Card of Cards would
- * put a second frame around things that already have one.
+ * Readings that share one control used to be two cards with a bare head above
+ * them on the page, because a Card of Cards would have put a second frame
+ * around things that already had one. The inner frames went instead: each
+ * reading is a block now, told apart by a rule and a heading, and the control
+ * sits inside the one card it actually governs.
  */
-.section-head {
+.block {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 6px;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.section-head h2 {
-  font-size: 16px;
+.block + .block {
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline);
+}
+
+.block h3 {
+  font-size: 15px;
   font-weight: 600;
 }
 
-.section-note {
+/* The line under a card head that says what the card is for. */
+.card-note {
   font-size: 13px;
   color: var(--ink-muted);
-  margin-top: -6px;
 }
 
 /* -- the power / outage timeline ------------------------------------------- */
@@ -3954,10 +3960,6 @@ code {
 }
 
 @media (max-width: 380px) {
-  .flow {
-    gap: 10px;
-  }
-
   .timeline-strip {
     --tl-label: 46px;
   }

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   formatDuration,
-  type Incident,
   type PowerPatternStats,
   type PowerState,
   type PowerSummary,
@@ -9,8 +8,6 @@ import {
 } from '@waifai/shared';
 import {
   Async,
-  Badge,
-  Button,
   Card,
   DayGrid,
   Hero,
@@ -25,10 +22,9 @@ import {
 } from '../components/ui.tsx';
 import { PageHeader } from '../components/PageHeader.tsx';
 import { PowerTimeline } from '../components/PowerTimeline.tsx';
-import { endpoints, useApi } from '../lib/api.ts';
+import { useApi } from '../lib/api.ts';
 import { sequential, SEQUENTIAL_ENDS } from '../lib/palette.ts';
 import { useResolvedTheme } from '../lib/theme.ts';
-import { useToast } from '../components/Toast.tsx';
 import { incidentMeta as meta } from '../lib/incidents.ts';
 import {
   AlertTriangleIcon,
@@ -111,7 +107,6 @@ export function Light(): React.JSX.Element {
           <>
             <Reliability report={report} days={days} />
             <Breakdown report={report} />
-            <Outages incidents={report.incidents} onChange={uptime.reload} />
           </>
         )}
       </Async>
@@ -681,111 +676,4 @@ function kindIcon(kind: string): React.JSX.Element {
     default:
       return <AlertTriangleIcon size={17} />;
   }
-}
-
-function Outages({
-  incidents,
-  onChange,
-}: {
-  incidents: Incident[];
-  onChange: () => void;
-}): React.JSX.Element {
-  const ordered = [...incidents].sort((a, b) => b.start - a.start);
-
-  return (
-    <Card title="Every outage">
-      {ordered.length === 0 ? (
-        <p className="muted">No outages recorded in this period.</p>
-      ) : (
-        <ol className="timeline">
-          {ordered.map((inc) => (
-            <IncidentRow key={inc.id} incident={inc} onChange={onChange} />
-          ))}
-        </ol>
-      )}
-    </Card>
-  );
-}
-
-function IncidentRow({
-  incident,
-  onChange,
-}: {
-  incident: Incident;
-  onChange: () => void;
-}): React.JSX.Element {
-  const m = meta(incident.kind);
-  const [editing, setEditing] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [note, setNote] = useState(incident.note ?? '');
-  const [saving, setSaving] = useState(false);
-  const { showToast } = useToast();
-
-  const save = async (): Promise<void> => {
-    setSaving(true);
-    try {
-      await endpoints.annotate(incident.id, note.trim());
-      setEditing(false);
-      showToast('Note saved', 'success');
-      onChange();
-    } catch {
-      showToast('Could not save the note', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <li className={`timeline-row ${open ? 'open' : ''}`}>
-      <span className={`timeline-dot tone-${m.tone}`} aria-hidden="true" />
-      <div className="timeline-body">
-        <div className="timeline-head">
-          <span className="timeline-title">{m.title}</span>
-          <Badge tone={incident.end === null ? 'bad' : m.tone}>
-            {incident.end === null ? 'Ongoing' : formatDuration(incident.durationSec ?? 0)}
-          </Badge>
-        </div>
-        <span className="timeline-when">
-          {localTime(incident.start)}
-          {incident.end !== null && ` → ${localTime(incident.end)}`} · {m.blame}
-        </span>
-        {/* Tap to unclamp; several kinds share a long boilerplate explanation. */}
-        <button
-          type="button"
-          className="timeline-detail"
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-        >
-          {incident.detail}
-        </button>
-
-        {incident.note !== null && !editing && <p className="timeline-note">{incident.note}</p>}
-
-        {editing ? (
-          <div className="timeline-note-edit">
-            <textarea
-              className="input"
-              rows={3}
-              maxLength={2000}
-              value={note}
-              placeholder="What did the ISP say? Ticket number, what fixed it…"
-              onChange={(e) => setNote(e.target.value)}
-            />
-            <div className="device-edit-actions">
-              <Button size="sm" variant="primary" busy={saving} onClick={() => void save()}>
-                Save note
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
-                Cancel
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <button type="button" className="link" onClick={() => setEditing(true)}>
-            {incident.note === null ? 'Add a note' : 'Edit note'}
-          </button>
-        )}
-      </div>
-    </li>
-  );
 }

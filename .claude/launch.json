@@ -6,10 +6,23 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": [
         "run",
-        "dev:web"
+        "dev",
+        "-w",
+        "@waifai/web",
+        "--",
+        "--host"
       ],
       "port": 5173,
       "autoPort": true
+    },
+    {
+      "name": "waifai-server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:server"
+      ],
+      "port": 8477
     }
   ]
 }

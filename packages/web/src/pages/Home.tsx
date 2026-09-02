@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import {
-  formatBps,
   formatBytes,
   formatDuration,
   type Device,
   type PowerSummary,
+  type ProbeSample,
   type StatusSnapshot,
   type ThroughputPoint,
   type UsageSummary,
@@ -31,6 +31,7 @@ import type { LiveEvent } from '../lib/live.ts';
 import { useActivity, type ActivityItem } from '../lib/activity.ts';
 import { triggerHaptic, useToast } from '../components/Toast.tsx';
 import { DeviceCarousel } from '../components/DeviceCarousel.tsx';
+import { OntPicture } from '../components/DevicePicture.tsx';
 import type { TabId } from '../lib/nav.ts';
 import {
   AlertTriangleIcon,
@@ -56,8 +57,8 @@ import {
  * The order below is: the light, because it decides what you do in the next
  * hour and decays in minutes; then whether the line is usable, which is quiet
  * until it is not; then the month's data, which moves slowly but ends
- * expensively; then who is on the network; then what has happened. Two rules
- * bend it, both upward and both when something is wrong - see `Home` itself.
+ * expensively; then who is on the network; then what has happened. One rule
+ * bends it, upward and when something is wrong - see `Home` itself.
  */
 
 export function Home({
@@ -90,18 +91,6 @@ export function Home({
   const stale = connection === 'closed' || (connection === 'connecting' && status !== null);
 
   const broken = status !== null && (status.status === 'down' || status.status === 'degraded');
-
-  const cap = usage.data?.capBytes ?? null;
-  const used = usage.data?.monthToDateBytes ?? 0;
-  const fraction = cap ? used / cap : null;
-  /* The budget climbs the page once it is close enough to hurt. */
-  const budgetUrgent =
-    fraction !== null &&
-    (fraction > 0.75 || (cap !== null && (usage.data?.projectedMonthBytes ?? 0) > cap));
-
-  const dataCard = (
-    <Async state={usage}>{(u) => <DataCard usage={u} onNavigate={onNavigate} />}</Async>
-  );
 
   return (
     <>
@@ -137,12 +126,13 @@ export function Home({
         {(p) => <LightCard power={p} live={status} stale={stale} onNavigate={onNavigate} />}
       </Async>
 
-      {/* Escalation, rule two: the budget jumps the queue when it is nearly spent. */}
-      {budgetUrgent && dataCard}
-
-      <Flow status={status} stale={stale} onNavigate={onNavigate} />
-
-      {!budgetUrgent && dataCard}
+      {/*
+        The budget used to have an escalation of its own - it jumped ahead of
+        the throughput card once it was three-quarters spent. That card is gone
+        and there is nothing left between the light and this one, so the rule
+        now moves it from where it already is. It went with the card.
+      */}
+      <Async state={usage}>{(u) => <DataCard usage={u} onNavigate={onNavigate} />}</Async>
 
       <Async state={devices}>
         {(d) => <OnlineDevices devices={d.devices} onNavigate={onNavigate} />}
@@ -159,10 +149,10 @@ export function Home({
  * The line's name.
  *
  * A constant rather than config because this app watches one household's one
- * connection - and being the only place the ISP is named is what keeps that a
- * one-line change if the line ever moves.
+ * connection - and being the only place the line is named is what keeps that
+ * a one-line change if the line ever moves.
  */
-const LINE_NAME = 'MTN FibreX';
+const LINE_NAME = 'My Home Router';
 
 /**
  * The masthead: what the line is, what it last measured, and the one button
@@ -174,8 +164,13 @@ const LINE_NAME = 'MTN FibreX';
  *
  * The two figures are the last speed test, not the traffic on the line right
  * now. They belong to the dial above them - press it and they are replaced -
- * and they answer "how fast is this line", which is a different question from
- * the one `Flow` answers further down with the same two words.
+ * and they answer "how fast is this line".
+ *
+ * The shape under each one is the other question: sixty minutes of what has
+ * actually moved in that direction. It is a second series rather than the
+ * history of the figure above it, which is why it is drawn as a shape and
+ * given the lane's hue while the figure keeps the strip's ink - the two are
+ * not meant to be read as one number and its trend.
  */
 function LineHeader({
   status,
@@ -186,6 +181,17 @@ function LineHeader({
 }): React.JSX.Element {
   const [busy, setBusy] = useState<string | null>(null);
   const { showToast } = useToast();
+  const history = useApi<{ points: ThroughputPoint[] }>('/throughput?hours=1');
+  const points = history.data?.points ?? [];
+  /*
+   * The third shape comes from the probe log rather than the ONT counters,
+   * which is the only place an hour of round trips exists. `tier=internet` is
+   * the hop the figure above it is about - the router hop would draw a flat
+   * line at 1ms and say nothing about the line.
+   */
+  const pings = useApi<{ points: ProbeSample[] }>('/probes?hours=1&tier=internet');
+  const rtt = latencyFloor(pings.data?.points ?? []);
+  const ping = latencyNow(rtt);
 
   const run = async (name: string, fn: () => Promise<unknown>, done: string): Promise<void> => {
     setBusy(name);
@@ -208,9 +214,14 @@ function LineHeader({
       <div className="line-head-top">
         <div className="line-id">
           <div className="line-id-row">
-            <span className="line-disc">
-              <LineIcon size={18} />
-            </span>
+            {/*
+              The box itself, not a symbol for it: the same HG8145V5 portrait
+              the roster draws, at the size the disc used to be. A tinted circle
+              around a monoline glyph said "network" twice and named nothing;
+              the portrait is the one thing on this screen that says which
+              hardware the readings came off.
+            */}
+            <OntPicture size={40} className="line-mark" />
             <div className="line-id-text">
               <p className="line-name">{LINE_NAME}</p>
               {/* The line's address, which is the nearest thing it has to a number. */}
@@ -252,20 +263,57 @@ function LineHeader({
         </button>
       </div>
 
+      {/*
+        `data-dir` is here for the shape below each pair and nothing else - it
+        sets `--lane`, which only the sparkline reads. See the note on
+        `.line-figure-label` for why the arrow and the word stay in the strip's
+        faint ink rather than taking the hue with it.
+
+        Three columns, not two: latency is the half of "how good is this line"
+        that the two rates cannot answer. A line can hand you 25 Mbps and still
+        be unusable for a call, and this is the number that says so.
+      */}
       <div className="line-figures">
-        <span className="line-figure">
+        <span className="line-figure" data-dir="down">
           <span className="line-figure-label">
             <ArrowDownIcon size={12} />
             Download
           </span>
           <Figure>{test ? `${test.downMbps.toFixed(1)} Mbps` : '—'}</Figure>
+          <Sparkline id="spark-down" values={points.map((p) => p.downBps)} />
         </span>
-        <span className="line-figure">
+        <span className="line-figure" data-dir="up">
           <span className="line-figure-label">
             <ArrowUpIcon size={12} />
             Upload
           </span>
           <Figure>{test ? `${test.upMbps.toFixed(1)} Mbps` : '—'}</Figure>
+          <Sparkline id="spark-up" values={points.map((p) => p.upBps)} />
+        </span>
+        {/*
+          The odd one out, and deliberately: figure and shape are both the
+          probe log, where the two beside it pair a speed test with the ONT's
+          traffic counters.
+
+          It is not from the test because there is no ping in the test to take.
+          `SpeedtestSample.pingMs` is nullable and the http-fallback source
+          this line actually runs on leaves it null on every row, so a column
+          fed from it would be a permanent dash under a full shape.
+
+          It would not be worth preferring even where a source does fill it in.
+          The two rates are a capacity question and a five-hour-old answer is
+          still roughly true; latency is what somebody checks before starting a
+          call, and a five-hour-old round trip does not answer that. Hence the
+          footer below: it dates the test, which is what the two Mbps figures
+          came off, and this column is not one of them.
+        */}
+        <span className="line-figure" data-dir="ping">
+          <span className="line-figure-label">
+            <LineIcon size={12} />
+            Latency
+          </span>
+          <Figure>{ping !== null ? `${Math.round(ping)} ms` : '—'}</Figure>
+          <Sparkline id="spark-ping" values={rtt} />
         </span>
       </div>
 
@@ -284,6 +332,82 @@ function LineHeader({
         </p>
       )}
     </section>
+  );
+}
+
+/**
+ * One round trip per probe cycle, oldest first.
+ *
+ * Two internet hosts are pinged each cycle and both are written under the same
+ * timestamp, so the rows arrive in pairs. Drawn as they come, the shape would
+ * zigzag between two servers that are simply different distances away rather
+ * than showing the line changing. The floor of each cycle is the honest
+ * measure of the path - the same reduction the latency chart on Data makes.
+ *
+ * A lost packet has no round trip to draw, so it is dropped rather than
+ * counted as zero. Loss is a different reading and this shape does not carry
+ * it; a hole in a 180-point line an inch wide would not have been visible
+ * anyway.
+ */
+function latencyFloor(samples: ProbeSample[]): number[] {
+  const best = new Map<number, number>();
+  for (const s of samples) {
+    if (s.rttMs === null) continue;
+    const seen = best.get(s.ts);
+    if (seen === undefined || s.rttMs < seen) best.set(s.ts, s.rttMs);
+  }
+  return [...best.entries()].sort((a, b) => a[0] - b[0]).map(([, ms]) => ms);
+}
+
+/**
+ * What a round trip costs right now, in one number.
+ *
+ * The median of the last five minutes rather than the newest cycle. One
+ * unlucky ping is worth nothing on its own, and a figure that changes every
+ * twenty seconds is one nobody can read - while fifteen cycles is still short
+ * enough that a line going bad shows up here inside a minute.
+ */
+function latencyNow(floors: number[]): number | null {
+  const recent = floors.slice(-15);
+  if (recent.length === 0) return null;
+  const sorted = [...recent].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)] ?? null;
+}
+
+/**
+ * Sixty minutes of one series, as a filled shape.
+ *
+ * Inline rather than through the chart component: this needs no axes, no
+ * cursor and no legend, and rendering a full chart twice in the masthead of
+ * the most-visited screen in the app is not worth what one costs.
+ */
+function Sparkline({ id, values }: { id: string; values: number[] }): React.JSX.Element | null {
+  if (values.length < 2) return null;
+  const top = Math.max(...values, 1);
+  const step = 100 / (values.length - 1);
+  const line = values.map((v, i) => `${i * step},${28 - (v / top) * 26}`).join(' ');
+
+  return (
+    <svg className="spark" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">
+      {/*
+        One gradient per lane, named by the lane. An SVG paint server is
+        document-scoped, so a shared id would mean the first lane's definition
+        painted both - invisible while the two lanes are the same colour, and
+        wrong the moment they are not. `--lane` still resolves per lane because
+        the gradient sits inside that lane's own subtree.
+
+        `preserveAspectRatio="none"` stretches the viewBox, which is why the
+        stops are vertical: a diagonal one would shear with the lane width.
+      */}
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="var(--lane, var(--accent))" stopOpacity="0.28" />
+          <stop offset="100%" stopColor="var(--lane, var(--accent))" stopOpacity="0.02" />
+        </linearGradient>
+      </defs>
+      <polygon points={`0,28 ${line} 100,28`} className="spark-fill" fill={`url(#${id})`} />
+      <polyline points={line} className="spark-line" />
+    </svg>
   );
 }
 
@@ -496,156 +620,7 @@ function LineDown({
   );
 }
 
-/* -- 3. what is flowing --------------------------------------------------- */
-
-/**
- * Live throughput, with the last hour behind it.
- *
- * Two labels reading "Idle" was the old version of this, and it took a full
- * card to say nothing. A shape says whether the quiet is a lull or the whole
- * evening, and when there is genuinely nothing moving the card gives its space
- * back rather than spending it on two zeroes.
- */
-function Flow({
-  status,
-  stale,
-  onNavigate,
-}: {
-  status: StatusSnapshot | null;
-  stale: boolean;
-  onNavigate: (tab: TabId) => void;
-}): React.JSX.Element {
-  const history = useApi<{ points: ThroughputPoint[] }>('/throughput?hours=1');
-
-  const down = status?.throughput?.downBps ?? 0;
-  const up = status?.throughput?.upBps ?? 0;
-  const points = history.data?.points ?? [];
-  const moving = down > 0 || up > 0 || points.some((p) => p.downBps > 0 || p.upBps > 0);
-
-  /*
-   * "Nothing is moving" is a claim, and on a cold open it would be made before
-   * anything had been fetched to support it - so the card announced an idle
-   * line for a second on every single load. Silence until there is something
-   * to say.
-   */
-  if (status === null && history.data === null) return <></>;
-
-  if (!moving) {
-    return (
-      <p className="quiet-line">
-        Nothing much is moving on the line right now.{' '}
-        <button type="button" className="link" onClick={() => onNavigate('data')}>
-          See the day
-        </button>
-      </p>
-    );
-  }
-
-  return (
-    <Card
-      title="Right now"
-      className={stale ? 'is-stale' : ''}
-      action={<SeeAll onClick={() => onNavigate('data')}>Details</SeeAll>}
-    >
-      <div className="flow">
-        <FlowLane
-          dir="down"
-          label="Download"
-          icon={<ArrowDownIcon size={14} />}
-          value={down}
-          known={status !== null}
-          values={points.map((p) => p.downBps)}
-        />
-        <FlowLane
-          dir="up"
-          label="Upload"
-          icon={<ArrowUpIcon size={14} />}
-          value={up}
-          known={status !== null}
-          values={points.map((p) => p.upBps)}
-        />
-      </div>
-    </Card>
-  );
-}
-
-function FlowLane({
-  dir,
-  label,
-  icon,
-  value,
-  known,
-  values,
-}: {
-  /** Picks the lane's hue, and names its gradient - see `Sparkline`. */
-  dir: 'down' | 'up';
-  label: string;
-  icon: React.ReactNode;
-  value: number;
-  /** False until the live feed has reported once - see the value below. */
-  known: boolean;
-  values: number[];
-}): React.JSX.Element {
-  const live = known && value > 0;
-
-  return (
-    <div className="flow-lane" data-dir={dir}>
-      <span className="flow-head">
-        {icon}
-        {label}
-      </span>
-      {/*
-        "Idle" is a claim about the line. Before the feed has said anything,
-        the honest reading is that we do not know yet - the shape below still
-        shows the hour that has already been recorded.
-      */}
-      <span className={`flow-value ${live ? 'is-live' : 'tone-neutral'}`}>
-        <Figure>{!known ? '—' : value > 0 ? formatBps(value) : 'Idle'}</Figure>
-      </span>
-      <Sparkline id={`spark-${dir}`} values={values} />
-    </div>
-  );
-}
-
-/**
- * Sixty minutes of one series, as a filled shape.
- *
- * Inline rather than through the chart component: this needs no axes, no
- * cursor and no legend, and rendering a full chart four times on the home
- * screen was the single most expensive thing on it.
- */
-function Sparkline({ id, values }: { id: string; values: number[] }): React.JSX.Element | null {
-  if (values.length < 2) return null;
-  const top = Math.max(...values, 1);
-  const step = 100 / (values.length - 1);
-  const line = values.map((v, i) => `${i * step},${28 - (v / top) * 26}`).join(' ');
-
-  return (
-    <svg className="spark" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">
-      {/*
-        One gradient per lane, named by the lane. An SVG paint server is
-        document-scoped, so the shared id this used to carry meant the first
-        lane's definition painted both - which was invisible while the two
-        lanes were the same blurple and would have made them the same colour
-        again the moment they stopped being. `--lane` still resolves per lane
-        because the gradient sits inside that lane's own subtree.
-
-        `preserveAspectRatio="none"` stretches the viewBox, which is why the
-        stops are vertical: a diagonal one would shear with the lane width.
-      */}
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="var(--lane, var(--accent))" stopOpacity="0.28" />
-          <stop offset="100%" stopColor="var(--lane, var(--accent))" stopOpacity="0.02" />
-        </linearGradient>
-      </defs>
-      <polygon points={`0,28 ${line} 100,28`} className="spark-fill" fill={`url(#${id})`} />
-      <polyline points={line} className="spark-line" />
-    </svg>
-  );
-}
-
-/* -- 4. the month's data -------------------------------------------------- */
+/* -- 3. the month's data -------------------------------------------------- */
 
 function DataCard({
   usage,
@@ -747,7 +722,7 @@ function DataCard({
   );
 }
 
-/* -- 5. who is on the network --------------------------------------------- */
+/* -- 4. who is on the network --------------------------------------------- */
 
 function OnlineDevices({
   devices,
@@ -783,7 +758,7 @@ function OnlineDevices({
   );
 }
 
-/* -- 6. what has happened ------------------------------------------------- */
+/* -- 5. what has happened ------------------------------------------------- */
 
 function Activity({ recent }: { recent: LiveEvent[] }): React.JSX.Element {
   const { items, loading } = useActivity(recent);
