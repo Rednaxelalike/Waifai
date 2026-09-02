@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Waifai">
+  <defs>
+    <linearGradient id="base" x1="32" y1="2" x2="32" y2="62" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4A90EE"/>
+      <stop offset="0.5" stop-color="#2A6FD0"/>
+      <stop offset="1" stop-color="#153B78"/>
+    </linearGradient>
+    <linearGradient id="gloss" x1="32" y1="3" x2="32" y2="33" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="bloom" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(32 44.4) rotate(90) scale(16)">
+      <stop stop-color="#FFFFFF" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <path d="M32 2c12.2 0 18.3 0 22.4 3.6C58 9.7 62 15.8 62 32s-4 22.3-7.6 26.4C50.3 62 44.2 62 32 62s-18.3 0-22.4-3.6C6 54.3 2 48.2 2 32S6 9.7 9.6 5.6C13.7 2 19.8 2 32 2Z" fill="url(#base)"/>
+  <path d="M32 2c12.2 0 18.3 0 22.4 3.6C57.4 9 61 13.9 61.8 25.5 52 31 42.3 33.6 32 33.6S12 31 2.2 25.5C3 13.9 6.6 9 9.6 5.6 13.7 2 19.8 2 32 2Z" fill="url(#gloss)"/>
+  <circle cx="32" cy="44.4" r="16" fill="url(#bloom)"/>
+  <g stroke="#FFFFFF" stroke-linecap="round" fill="none" stroke-width="4.4">
+    <path d="M15.5 27.5a23 23 0 0 1 33 0" stroke-opacity="0.42"/>
+    <path d="M21.5 34.4a14.6 14.6 0 0 1 21 0" stroke-opacity="0.74"/>
+  </g>
+  <circle cx="32" cy="44.4" r="4.6" fill="#FFFFFF"/>
+</svg>

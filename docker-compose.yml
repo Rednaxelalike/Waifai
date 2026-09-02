@@ -1,0 +1,37 @@
+services:
+  waifai:
+    build: .
+    container_name: waifai
+    restart: unless-stopped
+    env_file: .env
+
+    # Host networking is not a shortcut here, it is a requirement.
+    #
+    # Presence detection reads the host's ARP table and sweeps the LAN /24. On
+    # Docker's default bridge network the container sits behind a NAT with its
+    # own private subnet, so it would see one neighbour - the bridge gateway -
+    # and report an empty house forever. Host networking also means the ONT
+    # sees probes from the real LAN address.
+    #
+    # The consequence is that PORT from .env is the actual host port; the
+    # `ports:` mapping below does nothing under host networking and is left
+    # out deliberately rather than being wrong.
+    network_mode: host
+
+    volumes:
+      - waifai-data:/data
+
+    # Unprivileged ping. Debian's iputils-ping normally relies on a setuid bit
+    # or this sysctl; without it every probe fails inside the container and the
+    # dashboard reports a permanent outage.
+    sysctls:
+      - net.ipv4.ping_group_range=0 2147483647
+
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+volumes:
+  waifai-data:

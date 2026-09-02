@@ -1,0 +1,25 @@
+{
+  "name": "@waifai/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "node --env-file-if-exists=../../.env --watch --experimental-strip-types src/index.ts",
+    "start": "node --env-file-if-exists=../../.env dist/index.js",
+    "discover": "node --env-file-if-exists=../../.env --experimental-strip-types src/cli/discover.ts",
+    "probe": "node --env-file-if-exists=../../.env --experimental-strip-types src/cli/probe.ts",
+    "test": "node --test --experimental-strip-types \"src/**/*.test.ts\""
+  },
+  "dependencies": {
+    "@fastify/static": "^8.0.3",
+    "@fastify/websocket": "^11.0.1",
+    "@waifai/shared": "*",
+    "fastify": "^5.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}

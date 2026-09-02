@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Is the internet up, is the light on, and who is on the Wi-Fi." />
+    <meta name="theme-color" content="#FFFFFF" />
+    <meta name="color-scheme" content="light dark" />
+
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Waifai" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!--
+      One file, served from this box rather than from Google. It is the variable
+      Inter that ships inside the Bybit APK, subset to the Latin the app can
+      emit - every weight the interface uses, in 73 kB.
+
+      Self-hosted because the dashboard's whole job is to still work when the
+      line is down, and a webfont request to the internet is the one thing on
+      the page guaranteed to fail at that moment.
+    -->
+    <link rel="preload" href="/fonts/Inter-Variable.woff2" as="font" type="font/woff2" crossorigin />
+
+    <title>Waifai</title>
+
+    <script>
+      // Runs before the first paint so the app never flashes light then dark.
+      (function () {
+        try {
+          // Light unless the reader has said otherwise; the OS only gets a
+          // vote once they have explicitly picked System.
+          var saved = localStorage.getItem('waifai:theme');
+          var dark =
+            saved === 'dark' ||
+            (saved === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', dark ? '#2B2D31' : '#FFFFFF');
+        } catch (e) {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

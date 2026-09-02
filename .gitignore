@@ -1,0 +1,19 @@
+node_modules/
+dist/
+data/
+page_dumps/
+.env
+.env.local
+*.log
+*.sqlite
+*.sqlite-*
+.DS_Store
+
+# tsc -b caches build state here; a stale one survives a tsconfig change
+*.tsbuildinfo
+
+# Reference typefaces lifted from other apps' bundles while the design system was
+# being worked out. Only Inter (SIL OFL) is licensed to redistribute, and it is the
+# only one the build loads - see the single @font-face in packages/web/src/styles.css.
+packages/web/public/fonts/*
+!packages/web/public/fonts/Inter-Variable.woff2

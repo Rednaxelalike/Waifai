@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "types": ["node"],
+    // Source files import each other with explicit `.ts` specifiers so Node can
+    // run them directly via type stripping in dev. On build, TypeScript
+    // rewrites those to `.js` in the emitted output.
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true
+  },
+  "include": ["src/**/*"],
+  "references": [{ "path": "../shared" }]
+}

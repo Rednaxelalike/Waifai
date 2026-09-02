@@ -1,0 +1,26 @@
+{
+  "name": "waifai",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Self-hosted monitoring for an MTN FibreX line behind a Huawei EchoLife HG8145V5 ONT.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "workspaces": [
+    "packages/shared",
+    "packages/server",
+    "packages/web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:server": "npm run dev -w @waifai/server",
+    "dev:web": "npm run dev -w @waifai/web",
+    "build": "npm run build -w @waifai/shared && npm run build -w @waifai/web && npm run build -w @waifai/server",
+    "start": "node --env-file-if-exists=.env packages/server/dist/index.js",
+    "discover": "node --env-file-if-exists=.env --experimental-strip-types packages/server/src/cli/discover.ts",
+    "probe": "node --env-file-if-exists=.env --experimental-strip-types packages/server/src/cli/probe.ts",
+    "typecheck": "tsc -b packages/shared packages/server --pretty",
+    "test": "npm run test -w @waifai/server"
+  }
+}

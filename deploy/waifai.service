@@ -1,0 +1,47 @@
+# systemd unit for running Waifai directly on a Pi, without Docker.
+#
+#   sudo cp deploy/waifai.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now waifai
+#   journalctl -u waifai -f
+#
+# Adjust User and WorkingDirectory if you did not clone to /home/pi/waifai.
+
+[Unit]
+Description=Waifai - home fibre line monitor
+Documentation=https://github.com/your/waifai
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/waifai
+EnvironmentFile=/home/pi/waifai/.env
+ExecStart=/usr/bin/node packages/server/dist/index.js
+
+Restart=always
+RestartSec=10
+
+# A crash loop must not shred the SD card with restart churn, but the monitor
+# also must come back on its own after a power cut - which, given what this
+# tool is for, is a routine event rather than an exceptional one.
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+# The collector only needs to read the network and write its own database.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/pi/waifai/data
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=waifai
+
+[Install]
+WantedBy=multi-user.target

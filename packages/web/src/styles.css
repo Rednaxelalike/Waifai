@@ -1,0 +1,4345 @@
+/*
+ * Waifai design system - Discord's interface, Bybit's typeface.
+ *
+ * Both halves are taken from the shipped apps rather than from an impression
+ * of them. The Discord APK's React Native bundle carries the colour ramp, and
+ * the Bybit APK carries the font file itself; where a value below is marked
+ * "derived" it is one this project needed and Discord does not ship, computed
+ * from a Discord value and then contrast-checked rather than eyeballed.
+ *
+ * What that means in practice:
+ *
+ * 1. Depth is carried by surface value, not by borders and shadows. Discord's
+ *    dark theme separates a card from the page by making it lighter, and its
+ *    light theme by making it white on grey. Cards are borderless in dark for
+ *    that reason - a hairline there is a thing Discord does not do.
+ * 2. Blurple is the only accent. #5865F2, unchanged in both themes.
+ * 3. Green, amber and red still mean state, with one deliberate exception:
+ *    the switch is green when on, because that is Discord's switch and the
+ *    check glyph on the thumb repeats the state without relying on colour.
+ * 4. Sentence case throughout. Discord's own section headers are uppercase;
+ *    this is the one place the translation is refused, because uppercase
+ *    micro-labels were named as the thing that made this app look generated.
+ */
+
+/* -- typeface -------------------------------------------------------------- */
+
+/*
+ * Bybit's font, literally: `assets/flutter_assets/assets/font/inter.ttf` out of
+ * the Bybit APK, which its FontManifest.json registers as the family "Inter".
+ * It is a variable font - weight 100..900, optical size 14..32 - so one file
+ * covers every weight this app uses, where the three static Inter cuts it
+ * replaces cost 1.47 MB between them.
+ *
+ * Subset to Latin, Latin-1 and Latin Extended-A plus the punctuation the app
+ * actually emits, and clamped to the 400..700 weights it actually asks for:
+ * 875 kB of TTF becomes 73 kB of woff2.
+ *
+ * Self-hosted, never Google Fonts. The dashboard's whole job is to open during
+ * an outage, and a webfont request to the internet is the one asset on the page
+ * guaranteed to fail at exactly that moment.
+ */
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Variable.woff2') format('woff2-variations');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* -- tokens ---------------------------------------------------------------- */
+
+:root {
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+
+  /*
+   * Light theme. Discord's light surfaces run white -> #F2F3F5 -> #EBEDEF ->
+   * #E3E5E8 -> #DBDEE1, and the page sits one step below the cards on it.
+   */
+  --page: #f2f3f5;
+  --surface: #ffffff;
+  --surface-2: #f2f3f5;
+  --surface-3: #ebedef;
+  --surface-sunken: #ebedef;
+  /* Backing for device artwork - always a shade the hardware can sit on. */
+  --plate: #e3e5e8;
+  --hairline: #e3e5e8;
+  --hairline-strong: #dbdee1;
+  /*
+   * The edge of an inset panel - a block of related readings sitting inside a
+   * card. Panels used to be painted `--surface-sunken`, and two of them
+   * stacked eight pixels apart read as one grey region with a seam in it
+   * rather than as two boxes; in light theme that grey is also the page
+   * colour, so the panel read as a hole punched through the card. An outline
+   * costs one pixel, groups exactly as well, and stays one object per box
+   * however many of them stack up.
+   */
+  --panel-edge: var(--hairline);
+
+  --ink: #060607;
+  --ink-2: #4e5058;
+  --ink-muted: #5c5e66;
+  /* On white this is 3.7:1 - large text and icons only, never a sentence. */
+  --ink-faint: #80848e;
+  /* Text that sits on a filled blurple, green or red. */
+  --on-solid: #ffffff;
+
+  --accent: #5865f2;
+  --accent-hover: #4752c4;
+  --accent-press: #3c45a5;
+  --accent-ink: #4752c4;
+  --accent-wash: rgba(88, 101, 242, 0.1);
+
+  /* Discord's secondary button: a filled grey, never an outline. */
+  --btn-2: #e3e5e8;
+  --btn-2-hover: #dbdee1;
+  --btn-2-ink: #060607;
+  /* The selected pill in a segmented control - white here, grey in dark. */
+  --raised: #ffffff;
+
+  --good: #23a55a;
+  --good-ink: #0f7a41; /* derived: #23A55A is 3.2:1 on white, this is 5.4:1 */
+  --good-wash: rgba(35, 165, 90, 0.12);
+
+  --warn: #f0b232;
+  --warn-ink: #8a5a00; /* derived: Discord's amber is 1.9:1 on white */
+  --warn-wash: rgba(240, 178, 50, 0.18);
+
+  --bad: #da373c;
+  --bad-ink: #c62b30; /* derived from #DA373C for small text on white */
+  --bad-wash: rgba(218, 55, 60, 0.1);
+
+  --chart-grid: #e3e5e8;
+
+  /*
+   * Down and up. Kept in step with `DIRECTIONAL` in lib/palette.ts, which is
+   * where the reasoning for a green and a red lives - the charts on Data read
+   * the pair from there, the home sparklines read it from here.
+   */
+  --lane-down: #12996a;
+  --lane-up: #c4384f;
+
+  /*
+   * Discord's tooltip is the same near-black in both themes - it is a thing
+   * laid over the interface, not a thing in it, so it does not follow the
+   * theme. Declared once here because it has no light counterpart.
+   */
+  --tooltip: #111214;
+  --tooltip-ink: #ffffff;
+  --tooltip-ink-2: #b5bac1;
+
+  /*
+   * Discord's elevation, which is a stack of hard 1px steps rather than a
+   * blur. It reads as a card sitting on a surface instead of floating above it.
+   */
+  --shadow-sm: 0 1px 0 rgba(6, 6, 7, 0.05), 0 1.5px 0 rgba(6, 6, 7, 0.03), 0 2px 0 rgba(6, 6, 7, 0.03);
+  --shadow-pop: 0 8px 16px rgba(6, 6, 7, 0.16);
+
+  /*
+   * Card rest, and the one place light stops following the hard-step rule
+   * above. A section on this page is a sheet lying on the grey, so its whole
+   * edge comes out of the shadow - a 1px ring, then two soft steps - instead
+   * of a hairline border sat under a stack of hard ones, which drew the top
+   * edge twice in two slightly different greys. `--shadow-sm` is left alone
+   * for the small raised things (the segmented pill), where a card's
+   * elevation on a 28px control is a card-sized shadow on a tab.
+   */
+  --shadow-card: 0 0 0 1px rgba(3, 7, 18, 0.08), 0 1px 2px -1px rgba(3, 7, 18, 0.08),
+    0 2px 4px 0 rgba(3, 7, 18, 0.04);
+
+  /* Discord's radii: 4 / 8 / 12 / 16 / 24, and round. */
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r: 16px;
+  --r-lg: 24px;
+  --r-full: 999px;
+
+  --gap: 12px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /*
+   * Motion. The curves are Discord's own - they ship exactly these three in
+   * their bundle - and the durations are the peaks of its duration histogram.
+   * `--ease-decel` is fitted to a Files by Google fling: 840 px/s to rest in
+   * 450 ms. Keep the JS side (lib/motion.ts) in step with these.
+   */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-overshoot: cubic-bezier(0.25, 1.75, 0.25, 1.25);
+  --ease-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+  --d-instant: 100ms;
+  --d-fast: 150ms;
+  --d-base: 200ms;
+  --d-medium: 250ms;
+  --d-slow: 300ms;
+
+  /*
+   * Pressed, and the edge a tint needs to be an object.
+   *
+   * These are the one thing the Tempo sheet has that this file did not. Every
+   * interactive surface in that Figma file is specified three times - base,
+   * hover, pressed - and every tinted surface carries a border a step stronger
+   * than its fill. Waifai had base and hover, pressed on the primary button
+   * only, and no tinted borders at all, which is why a chip held under a thumb
+   * did nothing and a pale badge on a sunken card had no outline.
+   *
+   * The pressed values keep walking Discord's own ladder rather than inventing
+   * a darker grey: #E3E5E8 -> #DBDEE1 -> #D4D7DC is one more step of the same
+   * size. The edges are each tone at full strength held down to about a third,
+   * which is the ratio between `tag-*-bg` and `tag-*-border` in the sheet.
+   */
+  --surface-press: #dbdee1;
+  --btn-2-press: #d4d7dc;
+  --bad-press: #a12128;
+
+  /*
+   * The inverted button: the sheet's near-black fill with white on it, which
+   * in a themed app has to mean "the other end of this theme" rather than
+   * "black". So it is the ink colour as a fill and the page colour as text,
+   * and in dark it comes out as a white button - which is what an inverted
+   * button is for, one action that outranks a primary without shouting in
+   * blurple.
+   */
+  --inverted: #060607;
+  --inverted-hover: #1e1f22;
+  --inverted-press: #2b2d31;
+  --inverted-ink: #ffffff;
+
+  --accent-edge: rgba(88, 101, 242, 0.32);
+  --good-edge: rgba(35, 165, 90, 0.32);
+  --warn-edge: rgba(240, 178, 50, 0.45);
+  --bad-edge: rgba(218, 55, 60, 0.3);
+
+  /*
+   * Focus, for the fields that draw their own border. The page-wide
+   * `:focus-visible` outline sits outside the box; a field that already turns
+   * blurple on focus needs the halo instead, or the outline traces a shape
+   * two pixels off the one that just changed colour.
+   */
+  --ring: 0 0 0 3px var(--accent-wash);
+
+  color-scheme: light;
+}
+
+/*
+ * Dark theme. This is Discord's dark ladder: #1E1F22 behind everything,
+ * #2B2D31 for panels, #313338 for the surface you read on, #383A40 for the
+ * thing under your finger. Every one of these is a string in the shipped
+ * bundle.
+ */
+:root[data-theme='dark'] {
+  --page: #1e1f22;
+  --surface: #2b2d31;
+  --surface-2: #313338;
+  --surface-3: #383a40;
+  --surface-sunken: #232428;
+  --plate: #383a40;
+  --hairline: #232428;
+  --hairline-strong: #383a40;
+  /* Dark hairlines go darker than the card, which is right for a divider and
+     invisible as an outline; a panel takes the step above the surface. */
+  --panel-edge: var(--hairline-strong);
+
+  --ink: #f2f3f5;
+  --ink-2: #b5bac1;
+  --ink-muted: #949ba4;
+  --ink-faint: #80848e;
+  --on-solid: #ffffff;
+
+  --accent: #5865f2;
+  --accent-hover: #4752c4;
+  --accent-press: #3c45a5;
+  /* Discord's own text-brand for dark: full blurple is only 3:1 on a panel. */
+  --accent-ink: #949cf7;
+  --accent-wash: rgba(88, 101, 242, 0.15);
+
+  --btn-2: #4e5058;
+  --btn-2-hover: #6d6f78;
+  --btn-2-ink: #ffffff;
+  --raised: #4e5058;
+
+  --good: #23a55a;
+  --good-ink: #3fc47c; /* derived: #23A55A is 4.3:1 on #2B2D31 */
+  --good-wash: rgba(35, 165, 90, 0.15);
+
+  --warn: #f0b232;
+  --warn-ink: #f0b232; /* 7.3:1 on a panel - Discord's value stands as text */
+  --warn-wash: rgba(240, 178, 50, 0.15);
+
+  --bad: #da373c;
+  --bad-ink: #f8797d; /* derived from Discord's dark #F23F43, which is 3.7:1 */
+  --bad-wash: rgba(242, 63, 67, 0.13);
+
+  --chart-grid: #2b2d31;
+
+  --lane-down: #3bc489;
+  --lane-up: #e8606e;
+
+  /* Dark elevation is a real shadow, because there is nothing to step against. */
+  --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.2), 0 2px 0 rgba(0, 0, 0, 0.08);
+  --shadow-pop: 0 8px 16px rgba(0, 0, 0, 0.24);
+  /* No ring in dark: there is no white page for a card edge to be cut out of. */
+  --shadow-card: var(--shadow-sm);
+
+  /* Pressed goes lighter here, because the ladder runs the other way. */
+  --surface-press: #404249;
+  --btn-2-press: #7c7f88;
+  --bad-press: #b02c30;
+
+  --inverted: #f2f3f5;
+  --inverted-hover: #dbdee1;
+  --inverted-press: #cdd0d5;
+  --inverted-ink: #060607;
+
+  /* A hairline has to work harder on a dark panel to be seen at all. */
+  --accent-edge: rgba(88, 101, 242, 0.42);
+  --good-edge: rgba(35, 165, 90, 0.38);
+  --warn-edge: rgba(240, 178, 50, 0.4);
+  --bad-edge: rgba(242, 63, 67, 0.35);
+
+  color-scheme: dark;
+}
+
+/* -- reset ----------------------------------------------------------------- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font);
+  /*
+   * 16 / 22, which is Discord's message body. The optical-size axis is what
+   * makes one file cover this and a 44px hero: Inter tightens spacing and
+   * thins the stems on its own as the size climbs, so no heading needs a
+   * hand-set letter-spacing to stop looking loose.
+   */
+  font-size: 16px;
+  line-height: 1.375;
+  font-weight: 400;
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+figure {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  /*
+   * Labels on controls are not text to be selected. Without this a long-press
+   * on a phone pops the selection handles instead of firing the button, and a
+   * mis-aimed tap leaves a blue highlight sitting on "Edit".
+   */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+::selection {
+  background: var(--accent-wash);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-xs);
+}
+
+/*
+ * Discord's scrollbar: a fat rounded thumb on a visible track, with a gap
+ * around it so the thumb never touches the content. Only shows up where a
+ * pointer exists - phones get the platform's own overlay bar.
+ */
+@media (pointer: fine) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--hairline-strong) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 16px;
+    height: 16px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 4px solid transparent;
+    border-radius: 8px;
+    background-clip: padding-box;
+    background-color: var(--hairline-strong);
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin,
+.spin svg {
+  animation: spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* -- press feedback -------------------------------------------------------- */
+
+/*
+ * Two different presses, because Discord has two.
+ *
+ * Anything that looks like a card or a tile shrinks a little - a very short,
+ * damped scale, fast enough that it never delays the tap, slower coming back
+ * up than going down so the release feels elastic. Anything that looks like a
+ * button does not move at all: it darkens, which is what Discord's own buttons
+ * do, and moving a 38px pill under a fingertip only makes it harder to hit.
+ */
+.icon-btn,
+.tab,
+.action,
+.segmented-btn,
+.shelf-card,
+.row-tap {
+  transition: transform var(--d-base) var(--ease-out);
+}
+
+.icon-btn:active,
+.tab:active,
+.action:active:not(:disabled),
+.segmented-btn:active,
+.row-tap:active {
+  transition-duration: var(--d-instant);
+}
+
+/* -- tone utilities -------------------------------------------------------- */
+
+.tone-good {
+  color: var(--good-ink);
+}
+.tone-warn {
+  color: var(--warn-ink);
+}
+.tone-bad {
+  color: var(--bad-ink);
+}
+.tone-accent {
+  color: var(--accent-ink);
+}
+.tone-neutral {
+  color: var(--ink);
+}
+
+/* -- shell ----------------------------------------------------------------- */
+
+.app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * Flat, opaque, hairline underneath. The blur-and-saturate this used to have
+ * is an iOS idiom; Discord's own top bar is simply the panel colour, and on a
+ * dark theme a translucent bar over a scrolling chart is mud.
+ */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px;
+  background: none;
+  border: 0;
+}
+
+.brand-name {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/*
+ * Discord's presence chip. Not a bordered tag: a filled well with a status dot
+ * in it, the same object that sits under an avatar in the member list.
+ */
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border-radius: var(--r-full);
+  background: var(--surface-sunken);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.beacon {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  position: relative;
+  flex: none;
+}
+
+.status-tag.tone-good .beacon,
+[data-tone='good'] .hero-tag .beacon {
+  background: var(--good);
+}
+.status-tag.tone-warn .beacon,
+[data-tone='warn'] .hero-tag .beacon {
+  background: var(--warn);
+}
+.status-tag.tone-bad .beacon,
+[data-tone='bad'] .hero-tag .beacon {
+  background: var(--bad);
+}
+.status-tag.tone-neutral .beacon,
+[data-tone='neutral'] .hero-tag .beacon {
+  background: var(--ink-faint);
+}
+
+/* One quiet pulse, only on the live-and-well state. */
+.status-tag.tone-good .beacon::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--good);
+  animation: ping 2.4s var(--ease) infinite;
+}
+
+@keyframes ping {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.8;
+  }
+  70%,
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+/*
+ * Bare icon, no chip. Discord's header actions are the icon alone until you
+ * touch them, at which point a round well appears underneath.
+ */
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: none;
+  border: 0;
+  color: var(--ink-2);
+  transition: background var(--d-fast) var(--ease-standard), color var(--d-fast) var(--ease-standard);
+}
+
+.icon-btn:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+.icon-btn:active {
+  background: var(--surface-3);
+  transform: scale(0.92);
+}
+
+.content {
+  flex: 1;
+  width: 100%;
+  max-width: 660px;
+  margin: 0 auto;
+  padding: 16px 16px calc(88px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+/*
+ * One screen's worth of cards. This carries the stacking that `.content` used
+ * to, because `.content` is now the swipe surface and the screen inside it is
+ * what animates in and out.
+ */
+.screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+/* -- tab bar --------------------------------------------------------------- */
+
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  padding: 0 4px calc(env(safe-area-inset-bottom, 0px));
+  background: var(--surface);
+  border-top: 1px solid var(--hairline);
+}
+
+.tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  /* 56px of bar, which is the height Discord gives its own. */
+  padding: 9px 2px 8px;
+  border: 0;
+  background: none;
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 500;
+  transition: color var(--d-fast) var(--ease-standard);
+}
+
+.tab.active {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.tab:active {
+  transform: scale(0.95);
+}
+
+/*
+ * The travelling indicator.
+ *
+ * Discord marks the selected server with a white pill against the rail rather
+ * than by tinting the icon, and that pill stretches and slides between servers
+ * instead of cross-fading. This is that pill, laid on its side above the tab
+ * this app is on, moved by Motion's `layoutId`. A pill that slides tells you
+ * which way you just went; a cross-fade tells you nothing.
+ */
+.tab-pill {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 26px;
+  height: 3px;
+  margin-left: -13px;
+  border-radius: 0 0 var(--r-full) var(--r-full);
+  background: var(--ink);
+}
+
+.tab-icon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  height: 26px;
+}
+
+/*
+ * Discord's mention badge. Red, round, and ringed in the bar's own colour so
+ * it punches a hole rather than sitting on top of the icon.
+ */
+.tab-dot {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  margin-left: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+}
+
+.tab-dot.tone-warn {
+  background: var(--warn);
+}
+.tab-dot.tone-bad {
+  background: var(--bad);
+}
+
+/* -- page header ----------------------------------------------------------- */
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 2px 0 0;
+}
+
+.page-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* -- card ------------------------------------------------------------------ */
+
+/*
+ * Discord separates a panel from the page by surface value, not by outline.
+ * In light that is white on grey, in dark the card is simply lighter than the
+ * page, and in neither is there a stroked box - which is why the edge in light
+ * is the ring inside `--shadow-card` rather than a border. A border plus a
+ * shadow was two draws of the same top edge in two greys; one of them had to
+ * go, and the one that stays is the one that also lifts the card off the page.
+ */
+.card {
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 28px;
+}
+
+.card-head h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* -- hero ------------------------------------------------------------------ */
+
+/*
+ * A plain card. It carries no tone of its own.
+ *
+ * There used to be a 4px tinted bar down the leading edge, and it was the
+ * third thing on the card saying the same word: the dot is amber, the tag
+ * reads "On battery", the headline reads "Light is off". A full-height stripe
+ * of state colour on an otherwise neutral card is decoration wearing the
+ * clothes of information, and stacked three-deep down a screen it is the
+ * loudest thing on it while telling you nothing the row above it did not.
+ *
+ * The tone still reaches the beacon through `data-tone` on this element - see
+ * the beacon rules above. That dot is 8px, and it is enough.
+ */
+.hero {
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: var(--shadow-card);
+}
+
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.hero-headline {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+/* Facts, not prose: middot-separated durations, so the digits line up. */
+.hero-sub {
+  font-size: 14px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- hero figure ----------------------------------------------------------- */
+
+.hero-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0 2px;
+}
+
+.hero-value {
+  font-size: 44px;
+  line-height: 1.05;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  /* Inline, so the Figure inside sits on the text baseline rather than on a
+     flex line of its own - and the gap only ever separates it from a Delta. */
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hero-unit {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.hero-caption {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+/* -- stats ----------------------------------------------------------------- */
+
+/*
+ * A bounded tile per reading.
+ *
+ * The first pass drew borders by putting a hairline behind a 1px-gapped grid,
+ * which looked right until an odd number of tiles left an empty cell showing
+ * as a grey block; the second pass gave up on rules and separated the tiles
+ * with air alone. Air works while the readings are the same shape, and stops
+ * working the moment one of them carries a hint that wraps to two lines - the
+ * column below it starts at a different height, and a grid whose rows do not
+ * line up reads as a list of loose fragments rather than as a set.
+ *
+ * So each tile is drawn, and drawn the way every other panel in this app is:
+ * an outline in `--panel-edge`, no fill. The failure mode that killed the
+ * first pass cannot come back, because the border belongs to the tile rather
+ * than to a sheet behind it - an empty cell draws nothing at all.
+ *
+ * The gap shrinks with the boxes. Air was doing the separating; now the
+ * outlines are, and 14px of it between two drawn edges is a gutter.
+ *
+ * Wrapped flex rather than `auto-fit` grid, which is the one thing boxes
+ * changed about the layout. Undrawn tiles could sit in a grid with an empty
+ * cell beside them and nobody saw the hole; three drawn tiles two-across
+ * leave the third boxed at half width with a visible gap where its neighbour
+ * would be. On a flex line the last row grows into the space instead, so a
+ * count that does not divide by the column count reads as a deliberate wide
+ * tile rather than as a missing one.
+ */
+.stat-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* No icon per tile. The label already says what it is. */
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1 1 136px;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--panel-edge);
+}
+
+/*
+ * The label and the change on one line, the figure alone on the line below.
+ * Taken from the workout app's metric cards, and for the reason they do it: a
+ * tinted pill set beside the value competes with it, and the value is the
+ * thing being read.
+ *
+ * Pushed against the label rather than out to the tile's right edge, which is
+ * where the reference puts it. That works there because its metrics sit in
+ * drawn boxes; these tiles are separated by air, so a pill at the far edge of
+ * an invisible column floats between two of them and reads as belonging to
+ * whichever you looked at first.
+ *
+ * The min-height holds the line even on tiles with no change to report, so a
+ * row of figures still starts on one baseline.
+ */
+.stat-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 18px;
+}
+
+.stat-head .delta {
+  flex: none;
+}
+
+.stat-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * The one place a reading is allowed to break.
+ *
+ * `.fig` refuses to wrap on purpose - a duration split across two lines reads
+ * as two durations. But a tile is a fixed box now, and this is where the app
+ * puts values that are not single readings at all: three cut times joined by
+ * commas, a runtime beside its unit. Held on one line they ran straight
+ * through the tile's right edge, which the borderless version simply did not
+ * show. A break at a comma or a space beats a value hanging outside its box.
+ */
+.stat-value .fig {
+  white-space: normal;
+}
+
+.stat-hint {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+/* -- badge ----------------------------------------------------------------- */
+
+/*
+ * Discord's role pill with the Tempo tag's third part fitted to it.
+ *
+ * Discord draws a tag as a wash and a label. The Figma sheet draws it as a
+ * wash, a label, and a border a step stronger than the wash - every tag in it
+ * carries a `tag-*-border` - and that border is the part this app was missing.
+ * A `--*-wash` here is 10-15% alpha, and a badge sits on cards that are
+ * already `--surface-sunken`, so at that alpha it has no edge: it stops being
+ * an object on the card and reads as a run of coloured text. The hairline is
+ * the same hue at full strength, held to about a third.
+ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--hairline-strong);
+  background: var(--surface-sunken);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.badge svg {
+  flex: none;
+}
+
+.badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.badge.tone-good {
+  background: var(--good-wash);
+  border-color: var(--good-edge);
+  color: var(--good-ink);
+}
+.badge.tone-warn {
+  background: var(--warn-wash);
+  border-color: var(--warn-edge);
+  color: var(--warn-ink);
+}
+.badge.tone-bad {
+  background: var(--bad-wash);
+  border-color: var(--bad-edge);
+  color: var(--bad-ink);
+}
+.badge.tone-accent {
+  background: var(--accent-wash);
+  border-color: var(--accent-edge);
+  color: var(--accent-ink);
+}
+
+/* -- meter ----------------------------------------------------------------- */
+
+.meter {
+  position: relative;
+  height: 8px;
+  border-radius: var(--r-full);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  transition: width 0.5s var(--ease);
+}
+
+.meter-fill.tone-good {
+  background: var(--good);
+}
+.meter-fill.tone-warn {
+  background: var(--warn);
+}
+.meter-fill.tone-bad {
+  background: var(--bad);
+}
+
+.meter-marker {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--ink);
+  opacity: 0.45;
+}
+
+.scale-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-top: -6px;
+}
+
+/* -- buttons --------------------------------------------------------------- */
+
+/*
+ * Discord's buttons, which are the clearest single difference from what was
+ * here before: an 8px rounded rectangle, not a capsule; a filled grey for the
+ * secondary rather than an outline; and no movement on press. They darken
+ * instead. A 38px pill that shrinks under a fingertip is only harder to hit,
+ * and Discord never does it.
+ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--r-sm);
+  border: 0;
+  background: var(--btn-2);
+  color: var(--btn-2-ink);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background var(--d-fast) var(--ease-standard), opacity var(--d-fast);
+}
+
+.btn-sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.btn-md {
+  height: 38px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--btn-2-hover);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-solid);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+  background: var(--accent-press);
+}
+
+/* Discord's "link" button: text only, underlined on hover, no fill ever. */
+.btn-ghost {
+  background: transparent;
+  color: var(--accent-ink);
+  padding-inline: 8px;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: transparent;
+  text-decoration: underline;
+}
+
+.btn-danger {
+  background: var(--bad);
+  color: var(--on-solid);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--bad-ink);
+}
+
+.link {
+  background: none;
+  border: 0;
+  padding: 0;
+  align-self: flex-start;
+  color: var(--accent-ink);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+/*
+ * Pressed, for the three variants that did not have one.
+ *
+ * The primary has darkened on press since the start; the secondary, the
+ * danger and the ghost did not, so on a phone - where there is no hover to
+ * confirm anything - two of the four buttons in this app gave no answer at
+ * all between the tap and whatever the tap did. The Tempo sheet specifies a
+ * pressed fill for all five of its variants, and that is the gap it closes.
+ */
+.btn:active:not(:disabled) {
+  background: var(--btn-2-press);
+}
+
+.btn-danger:active:not(:disabled) {
+  background: var(--bad-press);
+}
+
+/*
+ * The ghost keeps its rule - no fill - for exactly as long as it is not being
+ * held. A text button with no pressed state is the one control here you can
+ * tap twice by accident because nothing acknowledged the first tap.
+ */
+.btn-ghost:active:not(:disabled) {
+  background: var(--surface-sunken);
+  text-decoration: underline;
+}
+
+/*
+ * The inverted button. One per screen at most, for the action that outranks
+ * everything around it without being blurple - Restart in the settings sheet
+ * is the case this was added for.
+ */
+.btn-inverted {
+  background: var(--inverted);
+  color: var(--inverted-ink);
+}
+
+.btn-inverted:hover:not(:disabled) {
+  background: var(--inverted-hover);
+}
+
+.btn-inverted:active:not(:disabled) {
+  background: var(--inverted-press);
+}
+
+/* -- segmented control ----------------------------------------------------- */
+
+/*
+ * Discord's filter tabs: a sunken track with one raised pill in it. The pill
+ * is the highest surface in the theme, which is how Discord marks "this is
+ * the selected one" without tinting it blurple.
+ */
+.segmented {
+  display: inline-flex;
+  padding: 4px;
+  gap: 2px;
+  border-radius: var(--r-sm);
+  background: var(--surface-sunken);
+  /*
+   * A track only as wide as its tabs.
+   *
+   * `inline-flex` is not enough: a card is a column flex container, so any
+   * child of it with an auto cross size gets stretched to the full width, and
+   * three 30px tabs ended up as a track running the whole card with a hand's
+   * width of empty grey after them. A definite cross size opts out of that
+   * stretch, and unlike `align-self` it does nothing in the row contexts -
+   * card headers, page headers - where the control is already placed.
+   */
+  width: fit-content;
+  max-width: 100%;
+}
+
+.segmented-btn {
+  border: 0;
+  background: none;
+  border-radius: var(--r-xs);
+  height: 28px;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  transition: background var(--d-fast) var(--ease-standard), color var(--d-fast) var(--ease-standard);
+}
+
+.segmented-btn:hover {
+  color: var(--ink);
+}
+
+/*
+ * White on grey in light, a lighter grey on near-black in dark - which is
+ * what Discord does, and the reason it is not simply --btn-2: in light that
+ * grey lands within one step of the track and the selection stops reading.
+ */
+.segmented-btn.active {
+  background: var(--raised);
+  color: var(--btn-2-ink);
+  box-shadow: var(--shadow-sm);
+}
+
+/* -- switch ---------------------------------------------------------------- */
+
+/*
+ * Discord's toggle, glyph and all: 40x24, and the thumb carries a check when
+ * on and a cross when off.
+ *
+ * Green here is the one deliberate break in the rule that reserves the status
+ * colours for state, and the glyph is the reason it is safe - the switch says
+ * on or off twice, once in colour and once in a shape, so nothing depends on
+ * telling green from grey.
+ */
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-track {
+  flex: none;
+  width: 40px;
+  height: 24px;
+  border-radius: var(--r-full);
+  background: var(--ink-faint);
+  padding: 3px;
+  transition: background var(--d-base) var(--ease-standard);
+}
+
+.switch-thumb {
+  display: block;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform var(--d-base) var(--ease-standard);
+}
+
+/*
+ * The glyphs are drawn, not set in a font: two strokes crossed for off, the
+ * same two re-proportioned into a check for on. Cheaper than an icon, and they
+ * inherit the thumb's transition for free.
+ */
+.switch-thumb::before,
+.switch-thumb::after {
+  content: '';
+  position: absolute;
+  background: var(--ink-faint);
+  border-radius: 1px;
+  transition: all var(--d-base) var(--ease-standard);
+}
+
+.switch-thumb::before {
+  width: 2px;
+  height: 10px;
+  top: 4px;
+  left: 8px;
+  transform: rotate(45deg);
+}
+
+.switch-thumb::after {
+  width: 2px;
+  height: 10px;
+  top: 4px;
+  left: 8px;
+  transform: rotate(-45deg);
+}
+
+.switch input:checked + .switch-track {
+  background: var(--good);
+}
+
+.switch input:checked + .switch-track .switch-thumb {
+  transform: translateX(16px);
+}
+
+.switch input:checked + .switch-track .switch-thumb::before {
+  background: var(--good);
+  height: 5px;
+  top: 8px;
+  left: 6px;
+  transform: rotate(-45deg);
+}
+
+.switch input:checked + .switch-track .switch-thumb::after {
+  background: var(--good);
+  height: 9px;
+  top: 5px;
+  left: 10px;
+  transform: rotate(35deg);
+}
+
+/* These labels are full sentences, so they need to wrap and stay readable. */
+.switch-label {
+  line-height: 1.4;
+}
+
+.switch input:focus-visible + .switch-track {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* -- chips ----------------------------------------------------------------- */
+
+/*
+ * A chip is a capsule; the segmented control is a track with a pill inside it.
+ * The difference is the Figma file's own, and it is worth keeping, because the
+ * shape carries the grammar: drawing the options inside one track says exactly
+ * one of them is true, and a loose row of capsules says any number can be.
+ *
+ * Selected is a wash and a blurple edge rather than a solid blurple fill. Four
+ * chips with one of them filled pulls the eye to the filter, and on the screen
+ * this was built for - the device roster - the counts inside the chips are the
+ * thing worth reading first.
+ */
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip,
+.chip-removable {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--hairline-strong);
+  background: var(--surface-sunken);
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background var(--d-fast) var(--ease-standard),
+    border-color var(--d-fast) var(--ease-standard), color var(--d-fast) var(--ease-standard);
+}
+
+.chip:hover:not(:disabled),
+.chip-removable:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+.chip:active:not(:disabled) {
+  background: var(--surface-press);
+}
+
+.chip.is-on,
+.chip-removable.is-on {
+  background: var(--accent-wash);
+  border-color: var(--accent-edge);
+  color: var(--accent-ink);
+}
+
+.chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chip svg {
+  flex: none;
+}
+
+/*
+ * The count. Tabular figures because these sit in a row and change as you
+ * type in the field above them - proportional digits make the chips twitch
+ * sideways on every keystroke.
+ */
+.chip-count {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+
+.chip.is-on .chip-count,
+.chip-removable.is-on .chip-count {
+  color: var(--accent-ink);
+}
+
+/* The dismissible chip is a shell holding two buttons, so it carries the box
+   and its halves carry nothing but their own hit areas. */
+.chip-removable {
+  padding: 0 4px 0 12px;
+}
+
+.chip-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+.chip-remove {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-faint);
+  transition: background var(--d-fast) var(--ease-standard), color var(--d-fast) var(--ease-standard);
+}
+
+.chip-remove:hover {
+  background: var(--surface-press);
+  color: var(--ink);
+}
+
+/* -- checkbox -------------------------------------------------------------- */
+
+/*
+ * The box, not a small switch.
+ *
+ * The switch in this app writes a setting the instant it moves, and says so
+ * with a glyph on its thumb. A checkbox commits nothing; it holds one of
+ * several things that are true at once. Keeping them different shapes is what
+ * stops a reader having to remember which toggles are live.
+ *
+ * `--swatch` lets the box be filled with a series colour instead of blurple,
+ * which is what turns the chart legend from a caption into the control.
+ */
+.checkbox {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.checkbox input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.checkbox-box {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: var(--r-xs);
+  border: 1.5px solid var(--hairline-strong);
+  background: var(--surface-sunken);
+  color: var(--on-solid);
+  transition: background var(--d-fast) var(--ease-standard),
+    border-color var(--d-fast) var(--ease-standard);
+}
+
+.checkbox:hover .checkbox-box {
+  border-color: var(--ink-faint);
+}
+
+/* The tick is drawn at rest and revealed, so it can be animated at all - a
+   glyph that only exists once checked has nothing to grow from. */
+.checkbox-box svg {
+  opacity: 0;
+  transform: scale(0.55);
+  transition: opacity var(--d-instant) var(--ease-standard),
+    transform var(--d-fast) var(--ease-overshoot);
+}
+
+.checkbox-dash {
+  position: absolute;
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0;
+}
+
+.checkbox input:checked + .checkbox-box,
+.checkbox input:indeterminate + .checkbox-box {
+  background: var(--swatch, var(--accent));
+  border-color: var(--swatch, var(--accent));
+}
+
+.checkbox input:checked + .checkbox-box svg {
+  opacity: 1;
+  transform: none;
+}
+
+.checkbox input:indeterminate + .checkbox-box .checkbox-dash {
+  opacity: 1;
+}
+
+.checkbox input:focus-visible + .checkbox-box {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.checkbox-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.checkbox-label {
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.checkbox-hint {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.checkbox.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* -- inputs ---------------------------------------------------------------- */
+
+/*
+ * Discord's text field: a well sunk below the panel it sits on, with no border
+ * until it is focused, at which point the field takes a blurple edge.
+ */
+.input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  background: var(--surface-sunken);
+  font-size: 16px; /* below 16px iOS zooms the page on focus */
+  transition: border-color var(--d-fast) var(--ease-standard), background var(--d-fast) var(--ease-standard);
+}
+
+.input::placeholder {
+  color: var(--ink-faint);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.input-search {
+  width: 160px;
+  height: 34px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field > span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+/* -- search ---------------------------------------------------------------- */
+
+/*
+ * The same well as `.input`, with the two things a search field needs and a
+ * plain one does not: a glyph, so it is recognisable before it is read, and a
+ * cross, so there is a way back to the whole list.
+ *
+ * The cross is drawn here rather than left to the browser because WebKit's own
+ * is the only one that exists and it only appears to a mouse. On the phone
+ * this dashboard is opened on, clearing the field meant selecting the text and
+ * deleting it.
+ */
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-glyph {
+  position: absolute;
+  left: 11px;
+  color: var(--ink-faint);
+  pointer-events: none;
+  transition: color var(--d-fast) var(--ease-standard);
+}
+
+.search:focus-within .search-glyph {
+  color: var(--accent);
+}
+
+.search-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px 0 36px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-size: 16px; /* below 16px iOS zooms the page on focus */
+  transition: border-color var(--d-fast) var(--ease-standard),
+    box-shadow var(--d-fast) var(--ease-standard);
+}
+
+.search.has-value .search-input {
+  padding-right: 38px;
+}
+
+.search-input::placeholder {
+  color: var(--ink-faint);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--ring);
+}
+
+.search-input::-webkit-search-cancel-button,
+.search-input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search-clear {
+  position: absolute;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-muted);
+  transition: background var(--d-fast) var(--ease-standard), color var(--d-fast) var(--ease-standard);
+}
+
+.search-clear:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+.search-clear:active {
+  background: var(--surface-press);
+}
+
+/* -- hints ----------------------------------------------------------------- */
+
+/*
+ * One line under a control. Three tones, and the two that carry a verdict
+ * carry a glyph with it - a sentence that is only red says nothing to a reader
+ * who cannot see that it is red.
+ */
+.hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+
+.hint svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.hint-good {
+  color: var(--good-ink);
+}
+
+.hint-bad {
+  color: var(--bad-ink);
+}
+
+/* -- notices --------------------------------------------------------------- */
+
+/*
+ * Discord's callout: a tinted panel with a 4px bar down the leading edge in
+ * the full-strength colour. The bar is what stops a wash of pale amber from
+ * reading as decoration.
+ */
+.notice {
+  padding: 9px 11px 9px 13px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--panel-edge);
+  border-left: 4px solid var(--ink-faint);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.notice-good {
+  background: var(--good-wash);
+  border-color: var(--good-edge);
+  border-left-color: var(--good);
+  color: var(--good-ink);
+}
+.notice-warn,
+.notice-stale {
+  background: var(--warn-wash);
+  border-color: var(--warn-edge);
+  border-left-color: var(--warn);
+  color: var(--warn-ink);
+}
+.notice-bad {
+  background: var(--bad-wash);
+  border-color: var(--bad-edge);
+  border-left-color: var(--bad);
+  color: var(--bad-ink);
+}
+.notice-info {
+  background: var(--accent-wash);
+  border-color: var(--accent-edge);
+  border-left-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* -- verdict --------------------------------------------------------------- */
+
+/*
+ * A reading of the evidence, set as a sentence.
+ *
+ * This was a filled green callout with a bar down its edge - the same
+ * treatment the app gives "your pack is nearly flat", spent on the sentence
+ * "this is what a healthy line looks like". A tinted panel is a claim on
+ * attention, and roughly ninety-five days in a hundred the claim being made
+ * here is that nothing is wrong, so the panel is decoration; worse, a shape
+ * that has cried wolf for a month is the exact shape that gets skipped on the
+ * morning the tone flips to red.
+ *
+ * So the colour shrinks to the 8px dot the rest of the app already uses for
+ * state, the sentence is left as a sentence, and a hairline puts it where it
+ * belongs - as the lead over the three numbers it is a summary of, rather than
+ * as a box floating above them.
+ */
+.verdict {
+  display: flex;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+/* An 8px dot centred on the first line of 14px text: (14 * 1.5 - 8) / 2. */
+.verdict .beacon {
+  margin-top: 6.5px;
+}
+
+.verdict[data-tone='good'] .beacon {
+  background: var(--good);
+}
+
+.verdict[data-tone='bad'] .beacon {
+  background: var(--bad);
+}
+
+/*
+ * The bad case is not a whisper. It does not get a panel back, but it gets
+ * full-strength ink and a step of weight, which is enough to stop the eye on
+ * a card whose every other line is grey.
+ */
+.verdict[data-tone='bad'] {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/*
+ * Discord's connection banner - the strip that says "no route" across the top
+ * of the app. Solid, not tinted, and centred: it is an announcement, not a
+ * note in the margin.
+ */
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.banner svg {
+  flex: none;
+}
+
+.banner-bad {
+  background: var(--bad);
+  color: var(--on-solid);
+}
+
+.muted {
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+
+.async-pending {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 28px 0;
+  color: var(--ink-muted);
+  font-size: 14px;
+}
+
+/* -- quick actions --------------------------------------------------------- */
+
+.actions {
+  display: grid;
+  /* Two now that Restart has moved into Settings; three if a third returns. */
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/*
+ * Tiles, not buttons. Discord builds these out of a rounded-square icon well
+ * on a sunken panel - the same object as an app tile in its launcher - so they
+ * read as places to go rather than as three primary actions competing.
+ */
+.action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 6px 12px;
+  border-radius: var(--r-md);
+  border: 0;
+  /*
+   * The tile has to be the panel colour, not the sunken one: in light theme
+   * the sunken grey is the page colour, and three tiles painted in it read as
+   * three icons floating on nothing.
+   */
+  background: var(--surface);
+  transition: background var(--d-fast) var(--ease-standard);
+}
+
+.action:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+
+.action:disabled {
+  opacity: 0.5;
+}
+
+.action:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Rounded square, which is Discord's icon shape everywhere but on an avatar. */
+.action-disc {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  background: var(--accent);
+  color: var(--on-solid);
+}
+
+.action.danger .action-disc {
+  background: var(--bad);
+  color: var(--on-solid);
+}
+
+.action.busy .action-disc svg {
+  animation: spin 0.9s linear infinite;
+}
+
+.action-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+/* -- power ----------------------------------------------------------------- */
+
+.power-now {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.power-now-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+}
+
+.power-now-icon.tone-good {
+  background: var(--good);
+  color: var(--on-solid);
+}
+.power-now-icon.tone-warn {
+  background: var(--warn);
+  color: #060607;
+}
+.power-now-icon.tone-bad {
+  background: var(--bad);
+  color: var(--on-solid);
+}
+
+.power-now-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.power-now-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.power-now-sub {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+/* Discord's inset panel, outlined rather than filled - see `--panel-edge`. */
+.restore {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 13px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--panel-edge);
+}
+
+.restore-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.restore-head > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/*
+ * How far to trust the time below, as two words on the opposite end of the
+ * label row. It was a trailing clause on the countdown - "44m to go, going by
+ * a clear pattern" - which put the least useful half of the sentence in the
+ * position the eye reads last and never got to.
+ */
+.restore-hedge {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.restore-time {
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.restore-left {
+  font-size: 14px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.restore-basis {
+  font-size: 13px;
+  color: var(--ink-muted);
+  margin-top: 4px;
+}
+
+/* -- share bar ------------------------------------------------------------- */
+
+.share-bar {
+  display: flex;
+  gap: 2px; /* the gap is the separator, not a stroke */
+  height: 10px;
+  border-radius: var(--r-full);
+  overflow: hidden;
+  background: var(--surface-sunken);
+}
+
+.share-seg {
+  height: 100%;
+}
+
+.share-mains {
+  background: var(--good);
+}
+.share-battery {
+  background: var(--warn);
+}
+.share-off {
+  background: var(--bad);
+}
+.share-unknown {
+  background: var(--hairline-strong);
+}
+
+.share-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.share-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.share-key {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+
+/* -- heatmap --------------------------------------------------------------- */
+
+.heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.heatmap-hours {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  margin-left: 34px;
+  font-size: 11px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.heatmap-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.heatmap-day {
+  width: 28px;
+  flex: none;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.heatmap-cells {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.heatmap-cell {
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 3px;
+  padding: 0;
+  min-width: 0;
+}
+
+/* An hour nothing was recorded in reads as absent, never as a middling value. */
+.heatmap-cell.no-data {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--surface-sunken),
+    var(--surface-sunken) 2px,
+    transparent 2px,
+    transparent 4px
+  );
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+.heatmap-scale-gap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 10px;
+  color: var(--ink-muted);
+}
+
+.heatmap-key-empty {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--surface-sunken),
+    var(--surface-sunken) 2px,
+    transparent 2px,
+    transparent 4px
+  );
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+
+.heatmap-cell:hover,
+.heatmap-cell:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+  z-index: 1;
+}
+
+.heatmap-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.heatmap-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.heatmap-ramp {
+  display: block;
+  width: 72px;
+  height: 8px;
+  border-radius: var(--r-full);
+}
+
+.heatmap-readout {
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
+/* -- usage summary --------------------------------------------------------- */
+
+.usage-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.usage-used {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.usage-of {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+/* -- devices --------------------------------------------------------------- */
+
+/*
+ * The roster is a grid of the same card the shelf uses, two to a row.
+ *
+ * There was a list of text rows under the shelf saying all of this again -
+ * picture, name, state, address, a strip of pills - and the two disagreed
+ * about which was the real one. The rows went. Two columns because the card
+ * was drawn at 164px and holds its proportions at a phone half-width; the
+ * grid does not grow a third column on a desktop, since a wider screen is not
+ * a reason to make the objects smaller.
+ */
+.device-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+/*
+ * The facts that were pills on a row, in the sheet, one device at a time.
+ * Label left, value right, hairline between - the same shape the settings
+ * rows use, so it reads as a record rather than as more form fields.
+ */
+.device-facts {
+  display: flex;
+  flex-direction: column;
+}
+
+.device-facts > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--hairline);
+  font-size: 13px;
+}
+
+.device-facts > div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.device-facts dt {
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.device-facts dd {
+  color: var(--ink-2);
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Surface, not the sunken well it used to be. The well read as inset against
+ * a card; here it sits on the sheet, which is the page colour, and the inputs
+ * inside it are the sunken ones - so the panel has to be the light layer or
+ * the two flatten into each other.
+ */
+.device-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  border-radius: var(--r);
+  background: var(--surface);
+}
+
+.device-edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* -- breakdown (retired: see ListRow) -------------------------------------- */
+
+.breakdown-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.breakdown-title {
+  font-weight: 500;
+}
+
+.breakdown-value {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+
+.breakdown-track {
+  height: 8px;
+  border-radius: var(--r-full);
+  background: var(--surface-sunken);
+  margin: 6px 0 3px;
+  overflow: hidden;
+}
+
+.breakdown-bar {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--accent);
+}
+
+.breakdown-bar.tone-bad {
+  background: var(--bad);
+}
+.breakdown-bar.tone-warn {
+  background: var(--warn);
+}
+.breakdown-bar.tone-good {
+  background: var(--good);
+}
+
+.breakdown-meta {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+/* -- timeline -------------------------------------------------------------- */
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+}
+
+.timeline-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 12px;
+  padding-bottom: 18px;
+}
+
+/* The rail, drawn behind every dot but the last. */
+.timeline-row:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 16px;
+  bottom: 0;
+  width: 2px;
+  border-radius: var(--r-full);
+  background: var(--hairline-strong);
+}
+
+.timeline-dot {
+  width: 10px;
+  height: 10px;
+  margin: 6px auto 0;
+  border-radius: 50%;
+  background: var(--ink-faint);
+  box-shadow: 0 0 0 4px var(--surface);
+  z-index: 1;
+}
+
+.timeline-dot.tone-bad {
+  background: var(--bad);
+}
+.timeline-dot.tone-warn {
+  background: var(--warn);
+}
+.timeline-dot.tone-good {
+  background: var(--good);
+}
+
+.timeline-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.timeline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.timeline-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.timeline-when {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+/*
+ * Clamped. Several outage kinds carry the same paragraph of explanation, and
+ * repeating it in full down a list of twenty destroys the scannability that is
+ * the only reason to draw a timeline.
+ */
+.timeline-detail {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.timeline-row.open .timeline-detail {
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+
+/* Discord's blockquote: a rounded grey bar, and no fill behind the text. */
+.timeline-note {
+  font-size: 14px;
+  padding: 2px 0 2px 12px;
+  border-left: 4px solid var(--hairline-strong);
+  border-radius: var(--r-xs);
+  color: var(--ink-2);
+  margin-top: 4px;
+}
+
+.timeline-note-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* -- charts ---------------------------------------------------------------- */
+
+.chart-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chart {
+  position: relative;
+  width: 100%;
+}
+
+/* Discord's empty state: one line, in the same outlined panel as the rest. */
+.chart-empty {
+  display: grid;
+  place-items: center;
+  padding: 27px 15px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--panel-edge);
+  color: var(--ink-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-legend-key {
+  width: 12px;
+  height: 3px;
+  border-radius: var(--r-full);
+}
+
+.chart-legend-key.subdued {
+  opacity: 0.45;
+}
+
+/*
+ * The legend, now that its keys are checkboxes.
+ *
+ * Smaller than a checkbox in a form - 16px against 20 - because a legend is
+ * read as a caption, and a row of form-sized boxes under a chart reads as a
+ * question being asked rather than as a key to what is drawn.
+ */
+.chart-legend .checkbox {
+  align-items: center;
+  gap: 7px;
+}
+
+.chart-legend .checkbox-box {
+  width: 16px;
+  height: 16px;
+  margin-top: 0;
+}
+
+.chart-legend .checkbox-box svg {
+  width: 11px;
+  height: 11px;
+}
+
+.chart-legend .checkbox-label {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+/* The last line standing keeps its tick and loses its hover, not its ink. */
+.chart-legend .checkbox.is-disabled {
+  opacity: 1;
+}
+
+.chart-legend .checkbox.is-disabled .checkbox-box {
+  opacity: 0.75;
+}
+
+.chart-legend-item.subdued .checkbox-box {
+  opacity: 0.55;
+}
+
+
+/* uPlot's own chrome, pulled down to a hairline. */
+.chart .u-wrap {
+  position: relative;
+}
+
+.chart .u-axis {
+  color: var(--ink-muted);
+}
+
+/*
+ * Full dashed crosshair, both arms, each ending in a badge over the axis it
+ * crosses. This is Bybit's chart chrome rather than Discord's - Discord has no
+ * charts to take it from - and it is drawn in the accent, so the badge that
+ * covers an axis label is blurple like everything else that is interactive.
+ */
+.chart .u-cursor-x {
+  border-right: 1px dashed var(--accent);
+  opacity: 0.55;
+}
+
+.chart .u-cursor-y {
+  border-bottom: 1px dashed var(--accent);
+  opacity: 0.55;
+}
+
+.chart-axis-badge {
+  position: absolute;
+  z-index: 4;
+  padding: 2px 6px;
+  border-radius: var(--r-xs);
+  background: var(--accent);
+  color: var(--on-solid);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--d-instant) var(--ease-standard);
+}
+
+.chart-axis-badge.is-on {
+  opacity: 1;
+}
+
+/* Sits over the y axis labels it replaces. */
+.chart-axis-badge-y {
+  left: 0;
+  transform: translateY(-50%);
+}
+
+/* Sits on the time axis, in the gutter uPlot reserves for it. */
+.chart-axis-badge-x {
+  bottom: 2px;
+  transform: translateX(-50%);
+}
+
+.chart .u-cursor-pt {
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.chart .u-select {
+  background: var(--accent-wash);
+}
+
+/* Discord's tooltip: near-black in both themes, 8px corners, hard shadow. */
+.chart-tip {
+  position: absolute;
+  top: 6px;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--d-instant) var(--ease-standard);
+  min-width: 132px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: var(--tooltip);
+  color: var(--tooltip-ink);
+  box-shadow: var(--shadow-pop);
+  font-size: 12px;
+}
+
+.chart-tip.is-on {
+  opacity: 1;
+}
+
+.chart-tip-when {
+  font-size: 11px;
+  color: var(--tooltip-ink-2);
+  margin-bottom: 4px;
+}
+
+.chart-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+}
+
+.chart-tip-key {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.chart-tip-name {
+  color: var(--tooltip-ink-2);
+  margin-right: auto;
+}
+
+.chart-tip-val {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- daily bars ------------------------------------------------------------ */
+
+/*
+ * Ruled off from the readings above it.
+ *
+ * The tiles are bounded now, and a chart sitting under them with nothing
+ * between reads as a fourth tile that has lost its box. The line says the
+ * card has changed from figures to a shape.
+ */
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+.bars-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 22px;
+}
+
+.bars-readout-value {
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.bars-readout-day {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.bars-plot {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px; /* surface gap between neighbours */
+  height: 92px;
+}
+
+.bars-col {
+  flex: 1;
+  min-width: 0;
+  max-width: 24px; /* never let a column fill its slot */
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.bars-bar {
+  width: 100%;
+  border-radius: var(--r-xs) var(--r-xs) 0 0; /* rounded data-end, square at the baseline */
+  background: var(--accent);
+  opacity: 0.45;
+  transition: opacity var(--d-fast) var(--ease-standard);
+}
+
+.bars-col.active .bars-bar,
+.bars-col:hover .bars-bar {
+  opacity: 1;
+}
+
+.bars-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+/* -- guest wi-fi ----------------------------------------------------------- */
+
+.wifi-card {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+/* Stays white in both themes - a QR code inverted is a QR code that will not
+   scan, and the plate is what guarantees the quiet zone around it. */
+.wifi-qr {
+  width: 128px;
+  height: 128px;
+  flex: none;
+  padding: 8px;
+  border-radius: var(--r-sm);
+  background: #ffffff;
+}
+
+.qr {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.wifi-detail {
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.wifi-label {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.wifi-ssid {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+
+.wifi-pass {
+  font-size: 16px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.wifi-pass.masked {
+  letter-spacing: 0.1em;
+  color: var(--ink-2);
+}
+
+.wifi-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* -- diagnostics ----------------------------------------------------------- */
+
+.jobs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.jobs li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.details summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-2);
+  padding: 4px 0;
+}
+
+.page-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.page-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Discord's inline code: a sunken chip with a real border around it. */
+code {
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  font-size: 12px;
+  padding: 1px 5px;
+  border-radius: var(--r-xs);
+  background: var(--surface-sunken);
+  border: 1px solid var(--hairline-strong);
+  overflow-wrap: anywhere;
+}
+
+/* -- toasts ---------------------------------------------------------------- */
+
+.toast-stack {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-pop);
+  font-size: 14px;
+  font-weight: 500;
+  animation: toast-in var(--d-medium) var(--ease-out);
+}
+
+:root[data-theme='dark'] .toast {
+  border-color: transparent;
+}
+
+.toast-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+
+.toast-success .toast-icon {
+  color: var(--good-ink);
+}
+.toast-error .toast-icon {
+  color: var(--bad-ink);
+}
+.toast-info .toast-icon {
+  color: var(--accent-ink);
+}
+
+
+/*
+ * The stack ignores the pointer so a toast never eats a tap meant for the
+ * screen behind it, which means each toast has to claim it back now that
+ * there are buttons inside one.
+ */
+.toast {
+  pointer-events: auto;
+}
+
+.toast-text {
+  flex: 1;
+  min-width: 0;
+}
+
+/*
+ * The action slot. It is the last thing in the row and the only thing in it
+ * that is blurple, which is the whole trick - the toast can be read and
+ * ignored, and the one word that undoes something is still findable at a
+ * glance.
+ */
+.toast-action {
+  flex: none;
+  border: 0;
+  padding: 0 2px;
+  background: none;
+  color: var(--accent-ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.toast-action:hover {
+  text-decoration: underline;
+}
+
+.toast-close {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin-right: -4px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-faint);
+  transition: background var(--d-fast) var(--ease-standard), color var(--d-fast) var(--ease-standard);
+}
+
+.toast-close:hover {
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+
+/*
+ * Leaving is its own state rather than an unmount, because a toast that
+ * disappears on the frame it is touched reads as a mis-tap. It goes the way
+ * it came, faster, and on the accelerating curve - the one this file uses for
+ * things leaving the screen.
+ */
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+}
+
+.toast.is-leaving {
+  animation: toast-out var(--d-fast) var(--ease-in) forwards;
+}
+
+/* -- crash screen ---------------------------------------------------------- */
+
+.crash {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 24px;
+}
+
+.crash-card {
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 24px;
+  border-radius: var(--r);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+}
+
+:root[data-theme='dark'] .crash-card {
+  border-color: transparent;
+}
+
+.crash-card h1 {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.crash-card p {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+/* -- device shelf ---------------------------------------------------------- */
+
+/*
+ * The Files by Google Recents row, rebuilt.
+ *
+ * The scroll is deliberately the platform's own: no scroll-snap, no JS
+ * momentum. Tracking the reference frame by frame showed the row coming to
+ * rest mid-card, which is what a plain overflow scroller already does, and the
+ * browser's deceleration is the one curve certain to match the phone in hand.
+ *
+ * The card bleeds past both screen edges so the next one always peeks. That
+ * peek is the entire scroll affordance - there are no arrows and no dots.
+ */
+
+.shelf-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.shelf-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  /* Optical alignment with the card titles above and below it. */
+  padding-left: 2px;
+  min-height: 30px;
+}
+
+.shelf-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.shelf-count {
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+/* Bleeds to the screen edges - matches `.content`'s 16px inline padding. */
+.shelf {
+  margin-inline: -16px;
+}
+
+.shelf-rail {
+  display: flex;
+  gap: 12px;
+  padding: 4px 16px 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.shelf-rail::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Only in the rail. The fixed width is what makes the next card peek past the
+ * screen edge; in the grid the column decides, and the card fills it.
+ */
+.shelf-rail > .shelf-card {
+  flex: 0 0 auto;
+  width: 164px;
+}
+
+/*
+ * The key light, and nothing else.
+ *
+ * The gradient used to fall all the way to `--surface-sunken`, which put a
+ * band of grey around the whole perimeter - and a grey edge on a grey page,
+ * read at arm's length, is a soft shadow. So this was the one card on the
+ * screen sitting on a different amount of air than every other one, which is
+ * exactly what it looked like next to the cards above and below it. The floor
+ * under the object already says the device is standing on something; the
+ * vignette was only saying it a second time, in the one place it could be
+ * mistaken for elevation.
+ *
+ * The edge is `--shadow-card`'s ring, same as `.card` - a spread shadow, so
+ * `overflow: hidden` does not touch it. There was an inset hairline drawn over
+ * that ring as well, which is the same edge-in-two-greys the card rule above
+ * went to some trouble to get rid of.
+ */
+.shelf-card {
+  position: relative;
+  height: 196px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r);
+  overflow: hidden;
+  background: radial-gradient(120% 80% at 50% 12%, var(--surface-2) 0%, var(--surface) 62%);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.shelf-card.is-offline {
+  filter: saturate(0.45);
+  opacity: 0.72;
+}
+
+/* -- the stage -- */
+
+.shelf-stage {
+  position: absolute;
+  inset: 0 0 46px;
+  display: grid;
+  place-items: center;
+}
+
+/* Contact shadow. Sells the object as standing on something. */
+.shelf-floor {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  width: 104px;
+  height: 18px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    color-mix(in srgb, var(--ink) 26%, transparent) 0%,
+    transparent 70%
+  );
+}
+
+.shelf-object {
+  position: relative;
+  z-index: 1;
+  transform-origin: 50% 70%;
+  /* Set from JS as the rail scrolls; no transition, or the two would fight. */
+  will-change: transform;
+}
+
+/*
+ * Mirrored copy under the object. Kept very faint - a full-strength reflection
+ * on a matte card reads as a mistake rather than as gloss.
+ */
+.shelf-reflection {
+  position: absolute;
+  top: calc(50% + 22px);
+  left: 50%;
+  transform: translateX(-50%) scaleY(-1);
+  opacity: 0.16;
+  -webkit-mask-image: linear-gradient(to top, transparent 20%, #000 92%);
+  mask-image: linear-gradient(to top, transparent 20%, #000 92%);
+  pointer-events: none;
+}
+
+/* -- card furniture -- */
+
+.shelf-overflow,
+.shelf-badge {
+  position: absolute;
+  top: 8px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  color: var(--ink-2);
+}
+
+.shelf-overflow {
+  right: 8px;
+}
+
+.shelf-badge {
+  right: 42px;
+  color: var(--accent-ink);
+}
+
+/* Discord's presence shapes again: a filled disc for on, a ring for off. */
+.shelf-dot {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.shelf-dot.on {
+  background: var(--good);
+}
+
+.shelf-dot.off {
+  border: 3px solid var(--ink-faint);
+}
+
+.shelf-scrim {
+  position: absolute;
+  inset: auto 0 0;
+  height: 74px;
+  background: linear-gradient(to top, var(--surface) 18%, transparent);
+  pointer-events: none;
+}
+
+.shelf-text {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 12px 12px;
+}
+
+.shelf-name {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.shelf-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+/*
+ * The third line, and the reason the card has two heights. An address is a
+ * lookup rather than a glance - it is quieter than the line above it and it
+ * truncates rather than wraps, because a card that changes height when a
+ * hostname is long breaks the grid row it sits in.
+ */
+.shelf-address {
+  overflow: hidden;
+  color: var(--ink-faint);
+  font-size: 11px;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.shelf-card.has-address {
+  height: 212px;
+}
+
+.shelf-card.has-address .shelf-stage {
+  inset: 0 0 62px;
+}
+
+.shelf-card.has-address .shelf-scrim {
+  height: 90px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shelf-object {
+    transform: none !important;
+  }
+}
+
+/* -- responsive ------------------------------------------------------------ */
+
+@media (max-width: 380px) {
+  .page-header h1 {
+    font-size: 22px;
+  }
+
+  .hero-value {
+    font-size: 38px;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .heatmap-day {
+    width: 22px;
+    font-size: 10px;
+  }
+
+  .heatmap-hours {
+    margin-left: 28px;
+  }
+
+  .input-search {
+    width: 120px;
+  }
+
+  .actions {
+    gap: 6px;
+  }
+}
+
+@media (min-width: 720px) {
+  .content {
+    padding-top: 22px;
+    gap: 16px;
+  }
+
+  .card,
+  .hero {
+    padding: 20px;
+  }
+}
+
+/* ==========================================================================
+   Hierarchy of need
+   --------------------------------------------------------------------------
+   Everything below belongs to the reordered home screen and the two merged
+   sections. The rule the whole group follows: the quiet state of a thing gets
+   one line, and only the state worth interrupting for gets a card.
+   ========================================================================== */
+
+/* -- staleness ------------------------------------------------------------- */
+
+/*
+ * What a dead socket looks like.
+ *
+ * A monitoring app that keeps showing confident numbers after it has lost the
+ * thing it was monitoring is worse than one that shows nothing: it only has to
+ * be wrong about the light once for the light indicator to stop being believed.
+ * The banner says it in words; this says it at a glance, on every value that
+ * came off the feed.
+ */
+.is-stale {
+  opacity: 0.55;
+  filter: saturate(0.5);
+  transition:
+    opacity var(--d-base) var(--ease-standard),
+    filter var(--d-base) var(--ease-standard);
+}
+
+/* -- the line header -------------------------------------------------------- */
+
+/*
+ * The strip the page opens with: what the line is on the left, the one action
+ * worth a thumb on the right, and what that action last measured underneath.
+ *
+ * It is built like a card and is deliberately not one - no title row, no
+ * "See all". A card announces a section; this announces the page.
+ */
+.line-head {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: var(--r);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.line-head-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.line-id {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.line-id-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.line-id-text {
+  min-width: 0;
+}
+
+/* A tinted disc, not a logo. The app has no mark for someone else's network. */
+.line-disc {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-full);
+  background: var(--accent-wash);
+  box-shadow: inset 0 0 0 1px var(--accent-edge);
+  color: var(--accent-ink);
+}
+
+.line-name {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.line-sub {
+  font-size: 13px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The quiet second action, sat where the reference puts "Switch network". It
+ * is the same shape as `.see-all` with the icon leading, because this one is
+ * a thing to do rather than a way out of the section.
+ */
+.line-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+  background: none;
+  border: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-ink);
+  transition: opacity var(--d-fast) var(--ease-standard);
+}
+
+.line-switch:active {
+  opacity: 0.55;
+}
+
+.line-switch:disabled {
+  opacity: 0.45;
+}
+
+/*
+ * The dial.
+ *
+ * Two rings and a wash: a solid inner edge that makes it an object, and a
+ * softer ring outside it that is the whole reason the eye lands here first.
+ * It is drawn in the accent rather than in green - green on this screen means
+ * a verdict about the line, and a button is not a verdict.
+ */
+.dial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+
+.dial-ring {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  border-radius: var(--r-full);
+  background: var(--surface);
+  color: var(--accent-ink);
+  box-shadow:
+    inset 0 0 0 2px var(--accent-edge),
+    0 0 0 5px var(--accent-wash);
+  transition:
+    transform var(--d-fast) var(--ease-standard),
+    box-shadow var(--d-fast) var(--ease-standard);
+}
+
+.dial:active .dial-ring {
+  transform: scale(0.94);
+  box-shadow:
+    inset 0 0 0 2px var(--accent),
+    0 0 0 5px var(--accent-wash);
+}
+
+.dial:disabled {
+  opacity: 0.55;
+}
+
+.dial-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+/*
+ * The measurement strip, label first and value after it on one line - which is
+ * the shape the reference uses and the opposite of `.key-figure`, where the
+ * number leads and the word explains it afterwards. Here the two words are
+ * doing the telling apart, so they come first.
+ */
+.line-figures {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+:root[data-theme='dark'] .line-figures {
+  border-top-color: var(--hairline-strong);
+}
+
+/*
+ * Wrapping, not a breakpoint.
+ *
+ * A pair that cannot fit on one line stacks its own label over its own value.
+ * The first attempt at this was a `max-width: 340px` media query, which never
+ * fired: nothing here could shrink, so the strip set the page's width instead
+ * of the page setting the strip's, the layout viewport came out wider than the
+ * screen, and every card on Home was clipped down the right-hand edge. Letting
+ * the pair wrap drops its min-content width to the wider of the two lines and
+ * the whole page fits again.
+ */
+.line-figure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  min-width: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+/* Once the pair stacks, the right-hand one hugs the edge it was pushed to. */
+.line-figure:last-child {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+/*
+ * The arrow leads the word, and both sit in the same faint ink. It is the
+ * quiet half of the pair - the figure beside it is what is being read - so the
+ * glyph is not given the lane's green or red the way the `Flow` lanes are.
+ * Two of these in a row across a 16px strip would be decoration.
+ */
+.line-figure-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.line-figure-label svg {
+  flex: none;
+  /* The cap height of 11px uppercase, not the 12px box the glyph is drawn in. */
+  margin-top: -1px;
+}
+
+.line-foot {
+  margin-top: -6px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+/* -- hero additions -------------------------------------------------------- */
+
+.hero-foot {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+/*
+ * Pulled to the edge so the link does not read as another sentence.
+ *
+ * The right margin used to be -6px, cancelling the ghost button's own
+ * padding. `.see-all` has none on that side, so the same -6px hung the
+ * chevron over the edge of the hero.
+ */
+.hero-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 2px 0 -4px;
+}
+
+/* -- flow ------------------------------------------------------------------ */
+
+/*
+ * Two lanes, each a number with the last hour behind it. The shape is the
+ * point: it says whether the current quiet is a lull or the whole evening,
+ * which two labels reading "Idle" never could.
+ */
+.flow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.flow-lane {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 11px 11px 7px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--panel-edge);
+}
+
+/*
+ * The two directions are told apart by hue, not only by a word.
+ *
+ * Both lanes drew the same blurple, which made the pair decoration: side by
+ * side they were two identical squiggles, and you had to go back up to the
+ * label to learn which one you were reading. This is the one place the app
+ * spends green and red on something that is not a verdict - see the note on
+ * `DIRECTIONAL` in lib/palette.ts for why it is safe here, which comes down to
+ * every lane still carrying its arrow and its word.
+ *
+ * Green is the download because that is the number people equate with "is the
+ * internet working", and a healthy download painted red reads as an alarm.
+ */
+.flow-lane[data-dir='down'] {
+  --lane: var(--lane-down);
+}
+
+.flow-lane[data-dir='up'] {
+  --lane: var(--lane-up);
+}
+
+.flow-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+.flow-value {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Only the figure that is actually moving takes the lane's colour. */
+.flow-value.is-live {
+  color: var(--lane, var(--accent-ink));
+}
+
+.spark {
+  width: 100%;
+  height: 28px;
+  margin-top: 4px;
+  overflow: visible;
+}
+
+/* The gradient is per-lane and named by the lane, so the fill is set inline. */
+.spark-fill {
+  stroke: none;
+}
+
+.spark-line {
+  fill: none;
+  stroke: var(--lane, var(--accent));
+  stroke-width: 1.5;
+  /* The viewBox is stretched to the lane width, so strokes must not be. */
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+}
+
+/* The collapsed form: when nothing is moving, the card gives its space back. */
+.quiet-line {
+  font-size: 14px;
+  color: var(--ink-muted);
+  padding: 2px 2px 0;
+}
+
+/* -- section heads --------------------------------------------------------- */
+
+/*
+ * For a group of cards that share one control, where a Card of Cards would
+ * put a second frame around things that already have one.
+ */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.section-head h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.section-note {
+  font-size: 13px;
+  color: var(--ink-muted);
+  margin-top: -6px;
+}
+
+/* -- the power / outage timeline ------------------------------------------- */
+
+.timeline-strip {
+  --tl-label: 58px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timeline-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-track-label {
+  width: var(--tl-label);
+  flex: none;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.timeline-lane {
+  position: relative;
+  flex: 1;
+  height: 22px;
+  border-radius: var(--r-xs);
+  overflow: hidden;
+  background: var(--surface-sunken);
+}
+
+/* What each lane means where nothing at all is drawn on it. */
+.timeline-lane.tl-up {
+  background: var(--good-wash);
+}
+
+.timeline-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--hairline-strong);
+  opacity: 0.6;
+}
+
+.tl-block {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 1px;
+}
+
+.tl-mains {
+  background: var(--good);
+}
+.tl-battery {
+  background: var(--warn);
+}
+.tl-off {
+  background: var(--bad);
+}
+.tl-block.tl-unknown {
+  background: var(--hairline-strong);
+}
+.tl-outage {
+  background: var(--bad);
+}
+/* A warning-level incident is real but not an outage, so it does not shout. */
+.tl-outage.sev-warn {
+  background: var(--warn);
+}
+.tl-outage.sev-info {
+  background: var(--ink-faint);
+}
+
+/*
+ * The picked block is raised by a ring rather than by a colour change: the
+ * colour is the datum, and changing it to show selection would be lying.
+ */
+.tl-block.picked {
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+.timeline-scale {
+  position: relative;
+  height: 14px;
+  margin-left: calc(var(--tl-label) + 8px);
+}
+
+.timeline-scale span {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.timeline-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-left: calc(var(--tl-label) + 8px);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.timeline-readout {
+  font-size: 13px;
+  color: var(--ink-2);
+  min-height: 34px;
+}
+
+/* -- sheet ----------------------------------------------------------------- */
+
+.sheet-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.sheet-scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.sheet {
+  position: relative;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
+  background: var(--page);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  box-shadow: var(--shadow-pop);
+}
+
+.sheet-grip {
+  width: 36px;
+  height: 4px;
+  border-radius: var(--r-full);
+  background: var(--hairline-strong);
+  align-self: center;
+  margin: 4px 0 2px;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sheet-head h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  /* Only the body scrolls, so the grip and title stay put under a thumb. */
+  overscroll-behavior: contain;
+  padding-bottom: 4px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.setting-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.setting-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.setting-hint {
+  font-size: 13px;
+  color: var(--ink-muted);
+}
+
+@media (min-width: 720px) {
+  /* On a wide screen the drawer becomes a centred panel. */
+  .sheet {
+    max-width: 560px;
+    width: 100%;
+    align-self: center;
+  }
+}
+
+@media (max-width: 380px) {
+  .flow {
+    gap: 10px;
+  }
+
+  .timeline-strip {
+    --tl-label: 46px;
+  }
+}
+
+/*
+ * Focus is moved into the sheet by script so a keyboard is not left behind on
+ * the page underneath. The panel itself is not a control, though, so it should
+ * not wear a focus ring for it - the things inside it still do.
+ */
+.sheet:focus,
+.sheet:focus-visible {
+  outline: none;
+}
+
+/* -- figures ---------------------------------------------------------------- */
+
+/*
+ * A reading, set as a reading rather than as a run of text.
+ *
+ * The four apps this was taken from all do the same thing to a number and none
+ * of them say so: the digits are large and dark, and the fraction and the unit
+ * are smaller and quieter. "3.12 GB" reads as a quantity in a way that "3.12
+ * GB" at one size and one weight never does, because at one size the eye has
+ * to parse the string before it can find the magnitude.
+ *
+ * Sizing is relative on purpose. `.fig-md` and `.fig-xl` set nothing at all -
+ * they take the size of the thing they are dropped into, which is already
+ * decided and, in the hero's case, already responsive. Only the two standalone
+ * sizes carry a number of their own.
+ */
+.fig {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * A string with no digits in it is a sentence, and sentences wrap. "Not
+ * measured" held on one line is 150px of unbreakable text in a 131px tile,
+ * which is how it came to hang over the edge of one.
+ */
+.fig.is-words {
+  white-space: normal;
+}
+
+.fig-sm {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fig-lg {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/*
+ * The quiet halves are set with opacity rather than a grey, because the figure
+ * above them is often toned. Painting the unit `--ink-muted` would turn the GB
+ * of a red "212.4 GB" grey while its digits stayed red, and half a phrase
+ * changing hue mid-word is worse than no distinction at all.
+ */
+/*
+ * Both ratios are floored in pixels. A ratio alone is right for a 44px hero
+ * and wrong for a 14px list row, where 0.55em is 7.7px - a unit that has to be
+ * guessed at is not a unit, and "dBm" set that small was the first thing that
+ * looked broken rather than considered. The floor is the smallest size this
+ * app sets anywhere else.
+ */
+.fig-frac {
+  font-size: max(12px, 0.68em);
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.fig-u {
+  font-size: max(11px, 0.55em);
+  font-weight: 500;
+  opacity: 0.68;
+}
+
+/* -- the figure strip ------------------------------------------------------- */
+
+/*
+ * Two or three readings across, divided by a hairline. Sat directly on a card
+ * with no frame of its own, because it is the card's headline rather than a
+ * thing inside it.
+ */
+.figure-row {
+  display: flex;
+  align-items: stretch;
+  padding: 2px 0;
+}
+
+.key-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.key-figure + .key-figure {
+  border-left: 1px solid var(--hairline);
+  padding-left: 14px;
+  margin-left: 14px;
+}
+
+:root[data-theme='dark'] .key-figure + .key-figure {
+  border-left-color: var(--hairline-strong);
+}
+
+.key-figure-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Sentence case. The reference apps track this out in caps; that is the one
+   translation this app refuses, everywhere. */
+.key-figure-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+/* -- delta ------------------------------------------------------------------ */
+
+/*
+ * Small, tabular, and carrying an arrow as well as a sign - the arrow is what
+ * survives being read in greyscale, and the tone is what makes it quick.
+ * Raised off the baseline so it sits against the top of the figure beside it
+ * rather than hanging under it.
+ */
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 1px 7px 1px 5px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: var(--r-full);
+  background: var(--surface-sunken);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.delta svg {
+  flex: none;
+}
+
+.delta.tone-good {
+  background: var(--good-wash);
+  border-color: var(--good-edge);
+  color: var(--good-ink);
+}
+
+.delta.tone-bad {
+  background: var(--bad-wash);
+  border-color: var(--bad-edge);
+  color: var(--bad-ink);
+}
+
+/* -- day grid --------------------------------------------------------------- */
+
+/*
+ * Thirty days in three rows, oldest first.
+ *
+ * Ten to a row rather than seven: the weekday reading is already covered by
+ * the heatmap above, and what this is for is the run - whether the bad days
+ * were last week or last month. Aligning to weeks would cost a row of padding
+ * cells to say something said better elsewhere.
+ */
+.day-grid-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.day-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 10), 1fr);
+  gap: 4px;
+}
+
+/*
+ * Square, but never taller than a row of text. At thirty days across ten
+ * columns a square cell is about 30px and the cap never comes into it; at
+ * seven days across seven columns it would otherwise be a 46px block, and a
+ * week of those reads as a chart rather than as a strip of days.
+ */
+.day-cell {
+  position: relative;
+  aspect-ratio: 1;
+  max-height: 32px;
+  border-radius: 6px;
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+/*
+ * The colour sits on an overlay rather than on the cell itself, so the sunken
+ * well underneath stays the base for the outlined "not watched" state below.
+ */
+.day-cell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.day-cell.tone-good::before {
+  background: var(--good);
+}
+.day-cell.tone-warn::before {
+  background: var(--warn);
+}
+.day-cell.tone-bad::before {
+  background: var(--bad);
+}
+.day-cell.tone-accent::before {
+  background: var(--accent);
+}
+
+/*
+ * Nothing recorded is an outline, never a pale fill. A monitor that was
+ * switched off must not be able to look like a day that went well.
+ */
+.day-cell.tone-none,
+.day-cell.tone-neutral {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+}
+
+.day-cell.tone-none::before,
+.day-cell.tone-neutral::before {
+  background: none;
+}
+
+/* Today is marked by a ring outside the cell, so it can carry a state colour
+   and still be findable. */
+.day-cell.is-today {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.day-grid-caption {
+  font-size: 13px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- list rows -------------------------------------------------------------- */
+
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  text-align: left;
+  color: inherit;
+}
+
+.list > li:last-child .list-row,
+.list > .list-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* Rounded square, Discord's icon container - circles are for avatars only. */
+.list-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: var(--r-md);
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+}
+
+.list-icon.tone-good {
+  background: var(--good-wash);
+  color: var(--good-ink);
+}
+.list-icon.tone-warn {
+  background: var(--warn-wash);
+  color: var(--warn-ink);
+}
+.list-icon.tone-bad {
+  background: var(--bad-wash);
+  color: var(--bad-ink);
+}
+.list-icon.tone-accent {
+  background: var(--accent-wash);
+  color: var(--accent-ink);
+}
+
+.list-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.list-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.list-sub {
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.list-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex: none;
+  text-align: right;
+}
+
+.list-value-main {
+  color: var(--ink);
+}
+
+.list-value-sub {
+  font-size: 12px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.list-chevron {
+  flex: none;
+  color: var(--ink-faint);
+}
+
+button.list-row:active {
+  background: var(--surface-2);
+}
+
+/* -- see all ---------------------------------------------------------------- */
+
+/*
+ * A way out of a section, not an action in it. A ghost Button was doing this
+ * and its box read as the second most important thing in the heading.
+ */
+.see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  flex: none;
+  padding: 4px 0 4px 6px;
+  background: none;
+  border: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-ink);
+  transition: opacity var(--d-fast) var(--ease-standard);
+}
+
+.see-all:active {
+  opacity: 0.55;
+}
+
+.see-all svg {
+  flex: none;
+}
