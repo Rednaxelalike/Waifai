@@ -12,7 +12,7 @@ import { buildUptimeReport } from '../analyze/incidents.ts';
 import { opticalTrend } from '../analyze/optical.ts';
 import { powerSummary } from '../analyze/power.ts';
 import { buildStatus } from '../analyze/status.ts';
-import { subscriptionSummary } from '../analyze/subscription.ts';
+import { rollRenewals, subscriptionSummary } from '../analyze/subscription.ts';
 import { usageSummary } from '../analyze/usage.ts';
 import { logger } from '../log.ts';
 
@@ -303,7 +303,19 @@ export function registerRoutes(app: FastifyInstance, ctx: AppContext, scheduler:
    * does the date arithmetic that decides whether anyone needs to go and pay.
    */
 
-  app.get('/api/subscriptions', async () => subscriptionSummary(ctx.db));
+  /*
+   * The read rolls before it answers. A window set to renew is carried forward
+   * the moment it runs out, and the moment it runs out is midnight, when
+   * nothing is scheduled and nobody is looking - so the alternative to doing
+   * it here is a phone opened at seven in the morning being told the line
+   * expired, by a server that already knows it did not. The maintenance job
+   * does the same thing on its own hour, for the sake of a database that is
+   * never read from.
+   */
+  app.get('/api/subscriptions', async () => {
+    rollRenewals(ctx.db);
+    return subscriptionSummary(ctx.db);
+  });
 
   app.post('/api/subscriptions', async (req, reply) => {
     const parsed = parseSubscription(req.body, null);
@@ -467,5 +479,15 @@ function parseSubscription(
     amount,
     reference: text('reference', base?.reference ?? null, 64),
     note: text('note', base?.note ?? null, 500),
+    autoRenew:
+      body['autoRenew'] === undefined ? (base?.autoRenew ?? false) : Boolean(body['autoRenew']),
+    /*
+     * Anything arriving through here stops being an assumption, whether it is
+     * a new payment or a correction to a carried-forward one. The flag means
+     * "nobody has looked at this yet", and somebody filling in the form has
+     * looked at it - which is also the only way a rolled window ever gets its
+     * receipt number, and the reason the sheet is worth opening at all.
+     */
+    assumed: body['assumed'] === undefined ? false : Boolean(body['assumed']),
   };
 }

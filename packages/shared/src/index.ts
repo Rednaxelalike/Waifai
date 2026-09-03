@@ -414,6 +414,26 @@ export interface Subscription {
   /** Receipt or transaction reference - the thing a support desk asks for. */
   reference: string | null;
   note: string | null;
+  /**
+   * Whether this window carries itself forward on the day it runs out.
+   *
+   * True for a line renewed the moment it expires, every month, for the same
+   * plan at the same price. That is an arrangement rather than a measurement,
+   * and typing it in again each month adds nothing to it except the chance of
+   * forgetting, so the server rolls the window on and marks what it rolled.
+   */
+  autoRenew: boolean;
+  /**
+   * True when the server carried this window forward rather than somebody
+   * entering it after paying.
+   *
+   * The flag is the whole reason auto-renewal is allowed to exist here. Every
+   * other row in this table is evidence that money changed hands; a rolled one
+   * is a habit written down in advance, and a countdown drawn from it is worth
+   * exactly what the habit is. Editing the record turns it back into evidence,
+   * since by then somebody has looked at it.
+   */
+  assumed: boolean;
 }
 
 /** The fields a person fills in. Everything else about a subscription is derived. */

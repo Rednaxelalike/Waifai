@@ -673,8 +673,9 @@ export class Db {
   addSubscription(input: SubscriptionInput): Subscription {
     const info = this.raw
       .prepare(
-        `INSERT INTO subscriptions (paid_ts, start_ts, end_ts, plan, amount, reference, note)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO subscriptions
+           (paid_ts, start_ts, end_ts, plan, amount, reference, note, auto_renew, assumed)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         input.paidTs,
@@ -684,6 +685,8 @@ export class Db {
         n(input.amount),
         n(input.reference),
         n(input.note),
+        b(input.autoRenew),
+        b(input.assumed),
       );
     return { id: Number(info.lastInsertRowid), ...input };
   }
@@ -701,7 +704,8 @@ export class Db {
     this.raw
       .prepare(
         `UPDATE subscriptions
-            SET paid_ts = ?, start_ts = ?, end_ts = ?, plan = ?, amount = ?, reference = ?, note = ?
+            SET paid_ts = ?, start_ts = ?, end_ts = ?, plan = ?, amount = ?, reference = ?,
+                note = ?, auto_renew = ?, assumed = ?
           WHERE id = ?`,
       )
       .run(
@@ -712,6 +716,8 @@ export class Db {
         n(merged.amount),
         n(merged.reference),
         n(merged.note),
+        b(merged.autoRenew),
+        b(merged.assumed),
         id,
       );
     return merged;
@@ -874,5 +880,7 @@ function rowToSubscription(r: Record<string, unknown>): Subscription {
     amount: numOrNull(r['amount']),
     reference: strOrNull(r['reference']),
     note: strOrNull(r['note']),
+    autoRenew: truthy(r['auto_renew']),
+    assumed: truthy(r['assumed']),
   };
 }

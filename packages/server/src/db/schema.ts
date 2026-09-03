@@ -202,4 +202,14 @@ export const MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX IF NOT EXISTS idx_subs_end ON subscriptions (end_ts);
   `,
+
+  // 5 - subscriptions that carry themselves forward
+  `
+  -- A line renewed on the day it expires, every month, for the same plan at
+  -- the same price. The server rolls the window on rather than have it typed
+  -- in again, and marks what it rolled as assumed: a habit written down ahead
+  -- of time rather than somebody reading a receipt.
+  ALTER TABLE subscriptions ADD COLUMN auto_renew INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE subscriptions ADD COLUMN assumed    INTEGER NOT NULL DEFAULT 0;
+  `,
 ];

@@ -14,6 +14,7 @@ import { collectPresence } from './collect/presence.ts';
 import { collectProbes } from './collect/probes.ts';
 import { checkUsageCap, collectSpeedtest } from './collect/speedtest.ts';
 import { maybeVacuum, prune, rollup } from './analyze/rollup.ts';
+import { rollRenewals } from './analyze/subscription.ts';
 import { defaultGateway } from './probes/ping.ts';
 import { discover } from './ont/discover.ts';
 
@@ -131,6 +132,12 @@ async function main(): Promise<void> {
       rollup(ctx.db);
       prune(ctx.db);
       maybeVacuum(ctx.db);
+      // A subscription set to renew is carried forward here as well as on the
+      // read, so a line whose dashboard nobody opens for a month still has a
+      // ledger with a month in it rather than one long silence.
+      for (const s of rollRenewals(ctx.db)) {
+        log.info(`subscription carried forward to ${new Date(s.endTs).toDateString()}`);
+      }
       await checkUsageCap(ctx);
     },
     false,

@@ -10,6 +10,7 @@ import {
   Async,
   Button,
   Card,
+  Checkbox,
   FigureRow,
   Hero,
   Hint,
@@ -51,6 +52,15 @@ export function SubscriptionCard(): React.JSX.Element {
 
   const close = (): void => setEditing(undefined);
 
+  /*
+   * A month the server carried forward is the one thing here worth changing
+   * the button for. Recording a payment is the wrong offer when the month is
+   * already on the screen and the only things missing from it are the receipt
+   * number and somebody's word that MTN was actually paid - so the button
+   * opens that record instead of an empty form.
+   */
+  const carried = state.data?.current?.assumed === true ? state.data.current : null;
+
   return (
     <>
       <Card
@@ -60,9 +70,9 @@ export function SubscriptionCard(): React.JSX.Element {
             size="sm"
             variant="ghost"
             icon={<CalendarIcon size={14} />}
-            onClick={() => setEditing(null)}
+            onClick={() => setEditing(carried)}
           >
-            Record payment
+            {carried === null ? 'Record payment' : 'Confirm this month'}
           </Button>
         }
       >
@@ -78,7 +88,13 @@ export function SubscriptionCard(): React.JSX.Element {
       */}
       <Sheet
         open={editing !== undefined}
-        title={editing ? 'Edit this payment' : 'Record a payment'}
+        title={
+          editing === null
+            ? 'Record a payment'
+            : editing?.assumed === true
+              ? 'Confirm this month'
+              : 'Edit this payment'
+        }
         onClose={close}
       >
         {editing !== undefined && (
@@ -88,6 +104,7 @@ export function SubscriptionCard(): React.JSX.Element {
             key={editing === null ? 'new' : editing.id}
             record={editing}
             typicalDays={state.data?.typicalDays ?? null}
+            renewsByDefault={(state.data?.current ?? state.data?.previous)?.autoRenew ?? false}
             onClose={close}
             onSaved={() => {
               close();
@@ -213,13 +230,23 @@ function PaymentRow({
 }): React.JSX.Element {
   const days = Math.max(1, Math.round((record.endTs - record.startTs) / DAY));
   const length = `${days} ${days === 1 ? 'day' : 'days'}`;
+  const span = `${dayLabel(record.startTs)} - ${dayLabel(record.endTs)}`;
 
   return (
     <ListRow
       icon={<CalendarIcon size={16} />}
       tone={live ? 'accent' : 'neutral'}
       title={record.plan === '' ? `Paid ${dayLabel(record.paidTs)}` : record.plan}
-      sub={`${dayLabel(record.startTs)} - ${dayLabel(record.endTs)}`}
+      /*
+        A ledger that cannot tell a receipt from an assumption is not a ledger,
+        and this row is the only place that distinction is drawn: the button
+        above offers to confirm the month, which is the same fact said once,
+        for the one month it applies to.
+
+        On the date line rather than in a badge of its own, and behind a middot
+        rather than the dash the dates use, which read as a third date.
+      */
+      sub={record.assumed ? `${span} · carried over` : span}
       value={record.amount === null ? length : formatNaira(record.amount)}
       {...(record.amount === null ? {} : { valueSub: length })}
       onClick={() => onPick(record)}
@@ -232,12 +259,15 @@ function PaymentRow({
 function PaymentForm({
   record,
   typicalDays,
+  renewsByDefault,
   onClose,
   onSaved,
 }: {
   /** Null when this is a new payment rather than a correction to an old one. */
   record: Subscription | null;
   typicalDays: number | null;
+  /** Whether the line this is being added to renews itself already. */
+  renewsByDefault: boolean;
   onClose: () => void;
   onSaved: () => void;
 }): React.JSX.Element {
@@ -248,11 +278,12 @@ function PaymentForm({
   const [amount, setAmount] = useState(record?.amount == null ? '' : String(record.amount));
   const [paid, setPaid] = useState(record === null ? today : toDateInput(record.paidTs));
   const [start, setStart] = useState(record === null ? today : toDateInput(record.startTs));
-  const [end, setEnd] = useState(
-    record === null ? shiftDays(today, span - 1) : toDateInput(record.endTs),
-  );
+  const [end, setEnd] = useState(record === null ? shiftDays(today, span) : toDateInput(record.endTs));
   const [reference, setReference] = useState(record?.reference ?? '');
   const [note, setNote] = useState(record?.note ?? '');
+  /* A household that renews every month renews this one too, so a new payment
+     inherits the arrangement rather than asking about it again. */
+  const [autoRenew, setAutoRenew] = useState(record?.autoRenew ?? renewsByDefault);
 
   /*
    * The usual case is one date and two taps: paid today, running from today,
@@ -272,13 +303,13 @@ function PaymentForm({
     setPaid(v);
     if (startPinned) return;
     setStart(v);
-    if (!endPinned) setEnd(shiftDays(v, span - 1));
+    if (!endPinned) setEnd(shiftDays(v, span));
   };
 
   const changeStart = (v: string): void => {
     setStartPinned(true);
     setStart(v);
-    if (!endPinned) setEnd(shiftDays(v, span - 1));
+    if (!endPinned) setEnd(shiftDays(v, span));
   };
 
   const changeEnd = (v: string): void => {
@@ -287,9 +318,9 @@ function PaymentForm({
   };
 
   const save = async (): Promise<void> => {
-    const paidTs = fromDateInput(paid, 'start');
-    const startTs = fromDateInput(start, 'start');
-    const endTs = fromDateInput(end, 'end');
+    const paidTs = fromDateInput(paid);
+    const startTs = fromDateInput(start);
+    const endTs = fromDateInput(end);
 
     if (paidTs === null || startTs === null || endTs === null) {
       showToast('All three dates have to be filled in.', 'error');
@@ -312,6 +343,10 @@ function PaymentForm({
       amount: digits === '' ? null : Number(digits),
       reference: reference.trim() === '' ? null : reference.trim(),
       note: note.trim() === '' ? null : note.trim(),
+      autoRenew,
+      // Whatever this was before, somebody has now read it and pressed Save,
+      // which is the entire difference between a record and an assumption.
+      assumed: false,
     };
 
     setSaving(true);
@@ -406,7 +441,7 @@ function PaymentForm({
           value={end}
           onChange={(e) => changeEnd(e.target.value)}
         />
-        <Hint>The last day the line is paid for. It counts to the end of that day.</Hint>
+        <Hint>The day it runs out, which is the day a renewal starts.</Hint>
       </label>
 
       <label className="field">
@@ -419,6 +454,18 @@ function PaymentForm({
           onChange={(e) => setReference(e.target.value)}
         />
       </label>
+
+      {/*
+        Under the dates, because it is a statement about them: it decides what
+        the next month's dates will be, and it is the only control in this
+        sheet that writes anything the household did not type.
+      */}
+      <Checkbox
+        checked={autoRenew}
+        onChange={setAutoRenew}
+        label="Renew this every month"
+        hint="On the day it expires, the same plan and price carry into the next month."
+      />
 
       <label className="field">
         <span>Note</span>
@@ -484,28 +531,29 @@ function toDateInput(ts: number): string {
 }
 
 /**
- * A typed day back into an instant.
+ * A typed day back into an instant: midnight at the top of it.
  *
- * Which edge of the day matters. A subscription starts at the top of the day
- * it starts and lasts all of the day it expires on, so an expiry entered as
- * the 30th has to be the last millisecond of the 30th; stored as the first
- * one, the countdown would read "Expired" through the whole last day that had
- * been paid for.
+ * Both ends of a window, deliberately. An expiry is the day the line stops
+ * rather than the last day it works, because that is what the household means
+ * by it - the day somebody goes and pays. So a month bought on the 3rd expires
+ * on the 3rd, and the renewal recorded that day starts exactly where the old
+ * one ended instead of a day after it.
+ *
+ * An expiry used to be stored as the last millisecond of the day it named. It
+ * drew the same countdown, and left every window overlapping the next by a
+ * day; what made the difference matter is the renewal chain, which hands the
+ * next window the instant this one ends and would have walked the renewal date
+ * one day further into the month every month.
  */
-function fromDateInput(value: string, edge: 'start' | 'end'): number | null {
+function fromDateInput(value: string): number | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (m === null) return null;
-  const y = Number(m[1]);
-  const mo = Number(m[2]);
-  const d = Number(m[3]);
-  return edge === 'start'
-    ? new Date(y, mo - 1, d, 0, 0, 0, 0).getTime()
-    : new Date(y, mo - 1, d, 23, 59, 59, 999).getTime();
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 0, 0, 0, 0).getTime();
 }
 
 /** Add whole days to a date-input string, staying on local calendar days. */
 function shiftDays(value: string, days: number): string {
-  const ts = fromDateInput(value, 'start');
+  const ts = fromDateInput(value);
   if (ts === null) return value;
   const d = new Date(ts);
   d.setDate(d.getDate() + days);
