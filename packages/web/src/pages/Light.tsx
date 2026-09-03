@@ -11,8 +11,6 @@ import {
   Card,
   DayGrid,
   Hero,
-  List,
-  ListRow,
   Segmented,
   Stat,
   StatGrid,
@@ -25,17 +23,9 @@ import { PowerTimeline } from '../components/PowerTimeline.tsx';
 import { useApi } from '../lib/api.ts';
 import { sequential, SEQUENTIAL_ENDS } from '../lib/palette.ts';
 import { useResolvedTheme } from '../lib/theme.ts';
-import { incidentMeta as meta } from '../lib/incidents.ts';
 import {
-  AlertTriangleIcon,
   BatteryIcon,
-  EyeOffIcon,
-  GlobeIcon,
-  LineIcon,
   PowerIcon,
-  RouterIcon,
-  ServerIcon,
-  SpeedometerIcon,
 } from '../components/icons.tsx';
 
 /**
@@ -46,7 +36,16 @@ import {
  * telling them apart was left to the reader flipping between screens with a
  * timestamp held in their head. The timeline near the top does that
  * correlation instead, and everything below it is the long form of the same
- * period - what powered the router, and what broke while it was powered.
+ * period - what powered the router, and when.
+ *
+ * There used to be an uptime summary below that as well: a "line was usable"
+ * percentage and a ranked list of what broke. Both are gone. They were
+ * computed over the *measured* period rather than the elapsed one, so with the
+ * collector off for three of the last seven days the card read "100.00%"
+ * directly above a row admitting the monitor had been blind for most of it. A
+ * figure that confident sitting beside its own refutation is worse than no
+ * figure at all. The /uptime call stays, because the timeline still marks
+ * incidents along it.
  */
 
 const STATE: Record<PowerState, { title: string; tone: Tone }> = {
@@ -98,15 +97,6 @@ export function Light(): React.JSX.Element {
 
             <Totals report={report} days={days} />
             <Patterns report={report} />
-          </>
-        )}
-      </Async>
-
-      <Async state={uptime}>
-        {(report) => (
-          <>
-            <Reliability report={report} days={days} />
-            <Breakdown report={report} />
           </>
         )}
       </Async>
@@ -581,105 +571,4 @@ function Patterns({ report }: { report: PowerSummary }): React.JSX.Element | nul
       </div>
     </Card>
   );
-}
-
-/* -- reliability of the line itself --------------------------------------- */
-
-function Reliability({ report, days }: { report: UptimeReport; days: number }): React.JSX.Element {
-  const ispSeconds = Object.entries(report.byKind)
-    .filter(([k]) => meta(k).blame === 'ISP')
-    .reduce((a, [, v]) => a + v.downtimeSec, 0);
-
-  return (
-    <Card title={days === 1 ? 'Line, last 24 hours' : `Line, last ${days} days`}>
-      <Hero
-        value={report.uptimePct.toFixed(2)}
-        unit="%"
-        tone={report.uptimePct >= 99.5 ? 'good' : report.uptimePct >= 98 ? 'warn' : 'bad'}
-        caption="of the measured period the line was usable"
-      />
-
-      <StatGrid>
-        <Stat
-          label="Total downtime"
-          value={formatDuration(report.totalDowntimeSec)}
-          tone={report.totalDowntimeSec > 0 ? 'warn' : 'good'}
-        />
-        <Stat
-          label="Outages"
-          value={report.incidentCount}
-          tone={report.incidentCount > 0 ? 'warn' : 'good'}
-        />
-        <Stat
-          label="Down to the ISP"
-          value={formatDuration(ispSeconds)}
-          tone={ispSeconds > 0 ? 'bad' : 'good'}
-          hint="fibre and routing faults"
-        />
-      </StatGrid>
-    </Card>
-  );
-}
-
-function Breakdown({ report }: { report: UptimeReport }): React.JSX.Element | null {
-  const kinds = Object.entries(report.byKind).sort((a, b) => b[1].downtimeSec - a[1].downtimeSec);
-  if (kinds.length === 0) return null;
-
-  const total = kinds.reduce((a, [, v]) => a + v.downtimeSec, 0);
-
-  return (
-    <Card title="What went wrong">
-      {/*
-        Sorted rows, the fault on the left and the time it cost on the right.
-        There used to be a proportional bar under each title as well, which was
-        a third telling of a thing the order and the duration had both already
-        said - and it is the one every reference app leaves out. What replaces
-        it is the share, which is the only part the bar carried that the
-        duration does not.
-      */}
-      <List>
-        {kinds.map(([kind, v]) => {
-          const m = meta(kind);
-          return (
-            <ListRow
-              key={kind}
-              icon={kindIcon(kind)}
-              tone={m.tone}
-              title={m.title}
-              sub={`${v.count} ${v.count === 1 ? 'time' : 'times'} · ${m.blame}`}
-              value={formatDuration(v.downtimeSec)}
-              valueSub={total > 0 ? `${Math.round((v.downtimeSec / total) * 100)}% of it` : undefined}
-            />
-          );
-        })}
-      </List>
-    </Card>
-  );
-}
-
-/**
- * A glyph per fault kind.
- *
- * The list is scannable before it is read only if the wells differ, and the
- * tone alone cannot do it - two of these kinds are amber and two are red. The
- * mapping is literal on purpose: the fibre, the route out, the box in the
- * hallway, the name server.
- */
-function kindIcon(kind: string): React.JSX.Element {
-  switch (kind) {
-    case 'pon_down':
-      return <LineIcon size={17} />;
-    case 'wan_down':
-      return <GlobeIcon size={17} />;
-    case 'ont_unreachable':
-      return <RouterIcon size={17} />;
-    case 'dns_failure':
-      return <ServerIcon size={17} />;
-    case 'degraded':
-      return <SpeedometerIcon size={17} />;
-    case 'collector_down':
-      return <EyeOffIcon size={17} />;
-    default:
-      return <AlertTriangleIcon size={17} />;
-  }
 }
