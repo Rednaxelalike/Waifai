@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import type { Device } from '@waifai/shared';
 import { DevicePicture } from './DevicePicture.tsx';
-import { WifiIcon, PowerIcon, MoreIcon } from './icons.tsx';
+import { WifiIcon, EthernetIcon, PowerIcon, MoreIcon } from './icons.tsx';
 import { SPRING, stagger } from '../lib/motion.ts';
 import { ago, shortTime } from './ui.tsx';
 
@@ -39,15 +39,15 @@ export function DeviceCard({
    * Signal strength wins the line where the ONT reports it - it is the number
    * that explains a bad stream. Where it does not, the join time goes there
    * rather than the word "Online", which the dot in the corner is already
-   * saying.
+   * saying. How the device is attached is left to the icon: the word "Wired"
+   * used to take this line, which cost the two wired devices their join time
+   * to say something a glyph says for free.
    */
   const since = device.onlineSince !== null ? `Since ${shortTime(device.onlineSince)}` : 'Online';
   const meta = device.online
-    ? device.connection === 'ethernet'
-      ? 'Wired'
-      : device.rssi !== null
-        ? `${device.rssi} dBm`
-        : since
+    ? device.rssi !== null
+      ? `${device.rssi} dBm`
+      : since
     : ago(device.lastSeen);
 
   return (
@@ -90,7 +90,12 @@ export function DeviceCard({
       <span className="shelf-text">
         <span className="shelf-name">{name}</span>
         <span className="shelf-meta">
-          {device.online && device.connection !== 'ethernet' && <WifiIcon size={11} />}
+          {device.online &&
+            (device.connection === 'ethernet' ? (
+              <EthernetIcon size={11} />
+            ) : (
+              <WifiIcon size={11} />
+            ))}
           {meta}
         </span>
         {/* Falls back to the MAC: a device with no lease still has an address. */}

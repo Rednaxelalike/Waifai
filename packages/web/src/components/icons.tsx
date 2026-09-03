@@ -88,6 +88,13 @@ export const WifiIcon = (p: IconProps): React.JSX.Element => (
   </Glyph>
 );
 
+export const EthernetIcon = (p: IconProps): React.JSX.Element => (
+  <Glyph {...p}>
+    <rect x="3" y="9.4" width="18" height="8.6" rx="2" />
+    <path d="M8.8 9.4V6.2h6.4v3.2" />
+  </Glyph>
+);
+
 export const RouterIcon = (p: IconProps): React.JSX.Element => (
   <Glyph {...p}>
     <rect x="2.5" y="13" width="19" height="7.5" rx="2.2" />
