@@ -27,13 +27,6 @@ function localDayOfMonth(ts: number): number {
   return Number(localDay(ts).slice(8, 10));
 }
 
-function addDays(iso: string, days: number): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  const dt = new Date(Date.UTC(y!, m! - 1, d!));
-  dt.setUTCDate(dt.getUTCDate() + days);
-  return dt.toISOString().slice(0, 10);
-}
-
 /**
  * The first day of the current billing cycle. Counting usage from the cycle
  * boundary rather than the calendar month is the difference between a
@@ -50,6 +43,22 @@ export function cycleStart(now = Date.now()): string {
   // Still before this month's boundary, so the cycle began last month.
   const prev = new Date(Date.UTC(y!, m! - 2, startDay));
   return prev.toISOString().slice(0, 10);
+}
+
+/**
+ * The last day of the current cycle, inclusive.
+ *
+ * The next boundary is the same day-of-month one month on, so the day before
+ * it closes this one. That makes a cycle 28 to 31 days long depending on which
+ * month it crosses, which is why the projection below counts them rather than
+ * assuming. `cycleStart` clamps the boundary to the 28th, so stepping a month
+ * forward from it can never land on a date the month does not have.
+ */
+export function cycleEnd(now = Date.now()): string {
+  const [y, m, d] = cycleStart(now).split('-').map(Number);
+  const next = new Date(Date.UTC(y!, m!, d!));
+  next.setUTCDate(next.getUTCDate() - 1);
+  return next.toISOString().slice(0, 10);
 }
 
 /**
@@ -75,15 +84,18 @@ export function recordUsage(db: Db, downDelta: number, upDelta: number, ts = Dat
 
 export function usageSummary(db: Db, now = Date.now()): UsageSummary {
   const from = cycleStart(now);
+  const to = cycleEnd(now);
   const today = localDay(now);
   const days = db.usageBetween(from, today);
 
   const monthToDateBytes = days.reduce((a, d) => a + d.downBytes + d.upBytes, 0);
 
   // Straight-line projection across the cycle. Deliberately simple: a fancier
-  // model would imply a confidence this data does not support.
+  // model would imply a confidence this data does not support. The length is
+  // the cycle's own - a February cycle is three days shorter than a January
+  // one, and a projection that always assumed 31 would overstate it by a tenth.
   const elapsedDays = Math.max(1, daysBetween(from, today) + 1);
-  const cycleLengthDays = Math.max(elapsedDays, daysBetween(from, addDays(from, 30)) + 1);
+  const cycleLengthDays = Math.max(elapsedDays, daysBetween(from, to) + 1);
   const projectedMonthBytes = Math.round((monthToDateBytes / elapsedDays) * cycleLengthDays);
 
   return {
@@ -91,6 +103,9 @@ export function usageSummary(db: Db, now = Date.now()): UsageSummary {
     projectedMonthBytes,
     capBytes: config.usage.capGb > 0 ? config.usage.capGb * 1024 ** 3 : null,
     days,
+    cycleStart: from,
+    cycleEnd: to,
+    today,
   };
 }
 

@@ -1,5 +1,6 @@
-import { existsSync } from 'node:fs';
-import Fastify from 'fastify';
+import { existsSync, readFileSync } from 'node:fs';
+import { networkInterfaces, type NetworkInterfaceInfo } from 'node:os';
+import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
 import { assertUsableConfig, config } from './config.ts';
@@ -17,6 +18,55 @@ import { defaultGateway } from './probes/ping.ts';
 import { discover } from './ont/discover.ts';
 
 const log = logger('main');
+
+/**
+ * Every address this is actually reachable at, and whether a phone can install
+ * it from there.
+ *
+ * This used to print the bind address, which on the default `0.0.0.0` is not a
+ * URL anyone can open - so the one thing the boot log had to say, the address
+ * to type into a phone, was the one thing it did not.
+ */
+function announce(secure: boolean): void {
+  const scheme = secure ? 'https' : 'http';
+  const { host, port } = config.server;
+  const lan =
+    host === '0.0.0.0' || host === '::'
+      ? Object.values(networkInterfaces())
+          .flat()
+          .filter(
+            (n): n is NetworkInterfaceInfo =>
+              n !== undefined &&
+              n.family === 'IPv4' &&
+              !n.internal &&
+              // A 169.254 address means that adapter never got a lease. It is
+              // in the list, it is not somewhere anything can reach us.
+              !n.address.startsWith('169.254.'),
+          )
+          .map((n) => n.address)
+      : [host];
+
+  log.info(`waifai listening on ${scheme}://127.0.0.1:${port}`);
+  for (const addr of lan) log.info(`                    ${scheme}://${addr}:${port}`);
+
+  /*
+   * The one thing worth a warning at boot.
+   *
+   * A service worker only registers on a secure origin, and loopback is the
+   * single exception browsers make. Over plain http that splits the audience
+   * in two without saying so: the desktop at 127.0.0.1 gets the whole PWA,
+   * and every phone on the LAN gets a web page that cannot be installed and
+   * caches nothing - which is the exact state it needs to be in during the
+   * outage it exists to be read during.
+   */
+  if (!secure && lan.length > 0) {
+    log.warn(
+      'serving over http. Unless something in front of this terminates TLS - "tailscale serve" ' +
+        'does, and is what the README recommends - phones on the LAN cannot install it as an ' +
+        'app: "Add to home screen" gives a browser shortcut and offline mode never works.',
+    );
+  }
+}
 
 async function main(): Promise<void> {
   assertUsableConfig();
@@ -88,7 +138,22 @@ async function main(): Promise<void> {
 
   // -- http ----------------------------------------------------------------
 
-  const app = Fastify({ logger: false, bodyLimit: 256 * 1024 });
+  const tls =
+    config.server.tlsCert && config.server.tlsKey
+      ? {
+          cert: readFileSync(config.server.tlsCert),
+          key: readFileSync(config.server.tlsKey),
+        }
+      : null;
+
+  /*
+   * Two calls rather than one with a conditional option: the overload that
+   * types the instance is picked from the shape of the object literal, and a
+   * ternary inside the call hands it a union it resolves to the http2 server.
+   */
+  const app: FastifyInstance = tls
+    ? Fastify({ logger: false, bodyLimit: 256 * 1024, https: tls })
+    : Fastify({ logger: false, bodyLimit: 256 * 1024 });
   await app.register(fastifyWebsocket);
 
   registerRoutes(app, ctx, scheduler);
@@ -107,7 +172,7 @@ async function main(): Promise<void> {
   }
 
   await app.listen({ host: config.server.host, port: config.server.port });
-  log.info(`waifai listening on http://${config.server.host}:${config.server.port}`);
+  announce(tls !== null);
 
   // -- shutdown ------------------------------------------------------------
 

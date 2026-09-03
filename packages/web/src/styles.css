@@ -789,9 +789,37 @@ button {
   min-height: 28px;
 }
 
+/*
+ * Centred while the title is one line, top-aligned the moment it is two.
+ * A "Breakdown" sitting halfway down a two-line heading looks dropped; level
+ * with the heading's own first line, it looks placed.
+ */
+.card-head:has(.card-meta) {
+  align-items: flex-start;
+}
+
+.card-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .card-head h2 {
   font-size: 16px;
   font-weight: 600;
+}
+
+/*
+ * The window the card's figures are totals over. Quiet on purpose: it is
+ * there to be found by anyone who doubts the number above it, not to compete
+ * with it.
+ */
+.card-meta {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 /* -- hero ------------------------------------------------------------------ */
@@ -1229,12 +1257,18 @@ button {
  * Discord's filter tabs: a sunken track with one raised pill in it. The pill
  * is the highest surface in the theme, which is how Discord marks "this is
  * the selected one" without tinting it blurple.
+ *
+ * The radii are concentric - a 12px track, 4px of padding, an 8px pill - so
+ * the pill's corners run parallel to the track's instead of cutting across
+ * them, which is the difference between a chip sitting in a groove and a chip
+ * laid on top of one.
  */
 .segmented {
   display: inline-flex;
+  align-items: center;
   padding: 4px;
   gap: 2px;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--surface-sunken);
   /*
    * A track only as wide as its tabs.
@@ -1250,16 +1284,45 @@ button {
   max-width: 100%;
 }
 
+/*
+ * The full-width form.
+ *
+ * On Devices the control is the screen's own filter rather than something
+ * sitting beside a card title, so it runs the width of the roster it governs
+ * and the options divide that equally. Everywhere else the track stays only
+ * as wide as its options - see the note above.
+ */
+.segmented.is-wide {
+  display: flex;
+  width: 100%;
+}
+
+.segmented.is-wide .segmented-btn {
+  flex: 1;
+  /* Without this a long label refuses to shrink and pushes the track wider
+     than the column, taking the last option off the right edge. */
+  min-width: 0;
+  justify-content: center;
+}
+
 .segmented-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 0;
   background: none;
-  border-radius: var(--r-xs);
+  border-radius: var(--r-sm);
   height: 28px;
   padding: 0 12px;
   font-size: 14px;
   font-weight: 500;
   color: var(--ink-muted);
+  white-space: nowrap;
   transition: background var(--d-fast) var(--ease-standard), color var(--d-fast) var(--ease-standard);
+}
+
+.segmented-btn svg {
+  flex: none;
 }
 
 .segmented-btn:hover {
@@ -1270,11 +1333,31 @@ button {
  * White on grey in light, a lighter grey on near-black in dark - which is
  * what Discord does, and the reason it is not simply --btn-2: in light that
  * grey lands within one step of the track and the selection stops reading.
+ *
+ * The edge is a box-shadow ring rather than a border. A real border would make
+ * the selected option a pixel wider than the others, so every label in the
+ * track would step sideways each time the selection moved.
  */
 .segmented-btn.active {
   background: var(--raised);
   color: var(--btn-2-ink);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 0 0 1px var(--hairline-strong), var(--shadow-sm);
+}
+
+/*
+ * The count, carried over from the filter chips it replaced on Devices.
+ * Tabular figures because these sit in a row and change as you type in the
+ * field above them - proportional digits make the track twitch on every
+ * keystroke.
+ */
+.segmented-count {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+
+.segmented-btn.active .segmented-count {
+  color: var(--ink-2);
 }
 
 /* -- switch ---------------------------------------------------------------- */
@@ -2053,7 +2136,8 @@ button {
  * How far to trust the time below, as two words on the opposite end of the
  * label row. It was a trailing clause on the countdown - "44m to go, going by
  * a clear pattern" - which put the least useful half of the sentence in the
- * position the eye reads last and never got to.
+ * position the eye reads last and never got to. It is printed only when there
+ * is a pattern behind the time; a guess with nothing behind it says nothing.
  */
 .restore-hedge {
   font-size: 12px;
@@ -2329,7 +2413,7 @@ button {
  * inside it are the sunken ones - so the panel has to be the light layer or
  * the two flatten into each other.
  */
-.device-edit {
+.form-panel {
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -2338,8 +2422,9 @@ button {
   background: var(--surface);
 }
 
-.device-edit-actions {
+.form-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 

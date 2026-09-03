@@ -1,5 +1,10 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { formatBytes, formatDuration } from '@waifai/shared';
+import {
+  formatBytes,
+  formatDuration,
+  type Subscription,
+  type SubscriptionInput,
+} from '@waifai/shared';
 import { config } from '../config.ts';
 import type { AppContext } from '../context.ts';
 import type { Scheduler } from '../scheduler.ts';
@@ -7,6 +12,7 @@ import { buildUptimeReport } from '../analyze/incidents.ts';
 import { opticalTrend } from '../analyze/optical.ts';
 import { powerSummary } from '../analyze/power.ts';
 import { buildStatus } from '../analyze/status.ts';
+import { subscriptionSummary } from '../analyze/subscription.ts';
 import { usageSummary } from '../analyze/usage.ts';
 import { logger } from '../log.ts';
 
@@ -14,6 +20,8 @@ const log = logger('api');
 
 const HOUR = 3_600_000;
 const DAY = 86_400_000;
+/** 2020-01-01. Anything before this is a typo, not a payment for this line. */
+const EARLIEST_PLAUSIBLE = 1_577_836_800_000;
 
 /** Clamp a user-supplied range so nobody can ask for 10 years of raw samples. */
 function windowMs(raw: unknown, defHours: number, maxHours: number): number {
@@ -284,6 +292,42 @@ export function registerRoutes(app: FastifyInstance, ctx: AppContext, scheduler:
     };
   });
 
+
+  // -- subscription --------------------------------------------------------
+
+  /*
+   * The one part of this app that is a ledger rather than a monitor. Nothing
+   * upstream will tell this house when the line was paid for or when it runs
+   * out - not the ONT, which has never heard of a plan, and not MTN, whose
+   * portal wants a login. So the household writes it down here, and the server
+   * does the date arithmetic that decides whether anyone needs to go and pay.
+   */
+
+  app.get('/api/subscriptions', async () => subscriptionSummary(ctx.db));
+
+  app.post('/api/subscriptions', async (req, reply) => {
+    const parsed = parseSubscription(req.body, null);
+    if (typeof parsed === 'string') return reply.code(400).send({ error: parsed });
+    return ctx.db.addSubscription(parsed);
+  });
+
+  app.patch('/api/subscriptions/:id', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const existing = ctx.db.getSubscription(Number(id));
+    if (!existing) return reply.code(404).send({ error: 'no such subscription' });
+    const parsed = parseSubscription(req.body, existing);
+    if (typeof parsed === 'string') return reply.code(400).send({ error: parsed });
+    return ctx.db.updateSubscription(Number(id), parsed);
+  });
+
+  app.delete('/api/subscriptions/:id', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    if (!ctx.db.getSubscription(Number(id))) {
+      return reply.code(404).send({ error: 'no such subscription' });
+    }
+    ctx.db.deleteSubscription(Number(id));
+    return { ok: true };
+  });
   // -- noticeboard ---------------------------------------------------------
 
   app.get('/api/notices', async () => ({ notices: ctx.db.listNotices() }));
@@ -357,4 +401,71 @@ export function registerRoutes(app: FastifyInstance, ctx: AppContext, scheduler:
 function csvCell(v: string): string {
   const s = String(v ?? '');
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/**
+ * Validate a hand-entered subscription, merging onto an existing one for a
+ * PATCH. Returns the record to store, or one sentence saying what was wrong.
+ *
+ * Strict about the three dates and forgiving about everything else, because
+ * the dates are the only part anything is computed from: a blank plan name
+ * costs nothing, while an expiry that lands before the start would draw a
+ * countdown that has already finished.
+ */
+function parseSubscription(
+  raw: unknown,
+  base: Subscription | null,
+): SubscriptionInput | string {
+  const body = (raw ?? {}) as Record<string, unknown>;
+
+  const ts = (key: string, fallback: number | undefined): number | string => {
+    if (body[key] === undefined) {
+      return fallback === undefined ? `${key} is required` : fallback;
+    }
+    const v = Number(body[key]);
+    // A plausible date rather than any number at all: seconds mistaken for
+    // milliseconds lands in 1970 and would otherwise be stored happily.
+    if (!Number.isFinite(v) || v < EARLIEST_PLAUSIBLE || v > Date.now() + 5 * 365 * DAY) {
+      return `${key} is not a date this line could have`;
+    }
+    return v;
+  };
+
+  const paidTs = ts('paidTs', base?.paidTs);
+  if (typeof paidTs === 'string') return 'The payment date is missing or unreadable.';
+  const startTs = ts('startTs', base?.startTs);
+  if (typeof startTs === 'string') return 'The activation date is missing or unreadable.';
+  const endTs = ts('endTs', base?.endTs);
+  if (typeof endTs === 'string') return 'The expiry date is missing or unreadable.';
+
+  if (endTs <= startTs) return 'The expiry has to come after the day it started.';
+
+  const amount =
+    body['amount'] === undefined
+      ? (base?.amount ?? null)
+      : body['amount'] === null || body['amount'] === ''
+        ? null
+        : Number(body['amount']);
+  if (amount !== null && (!Number.isFinite(amount) || amount < 0)) {
+    return 'That amount is not a sum of money.';
+  }
+
+  const text = (key: string, fallback: string | null, max: number): string | null => {
+    if (body[key] === undefined) return fallback;
+    // An explicit null is a field being cleared, and has to be caught before
+    // String() turns it into the four characters "null" and stores those.
+    if (body[key] === null) return null;
+    const s = String(body[key]).trim().slice(0, max);
+    return s === '' ? null : s;
+  };
+
+  return {
+    paidTs,
+    startTs,
+    endTs,
+    plan: text('plan', base?.plan ?? '', 64) ?? '',
+    amount,
+    reference: text('reference', base?.reference ?? null, 64),
+    note: text('note', base?.note ?? null, 500),
+  };
 }

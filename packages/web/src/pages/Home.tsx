@@ -27,6 +27,7 @@ import {
   type Tone,
 } from '../components/ui.tsx';
 import { endpoints, humanError, useApi } from '../lib/api.ts';
+import { cycleLabel, cycleProgress, formatDay } from '../lib/cycle.ts';
 import type { LiveEvent } from '../lib/live.ts';
 import { useActivity, type ActivityItem } from '../lib/activity.ts';
 import { triggerHaptic, useToast } from '../components/Toast.tsx';
@@ -419,11 +420,16 @@ function Sparkline({ id, values }: { id: string; values: number[] }): React.JSX.
  * "going by a clear pattern" is a clause you have to read to the end of to
  * learn one thing: how far to trust the time above it. Sat beside the label as
  * a chip it is read at a glance, and the sentence it came out of is gone.
+ *
+ * Low confidence gets no chip. "rough guess" was the app disowning its own
+ * number in the same breath as printing it, which leaves a reader nothing to
+ * do with either; the row is already headed "Expected", and a time that turns
+ * out wrong says "Overdue - not back yet" underneath itself.
  */
-function hedge(confidence: string | undefined): string {
+function hedge(confidence: string | undefined): string | null {
   if (confidence === 'high') return 'clear pattern';
   if (confidence === 'medium') return 'last few cuts';
-  return 'rough guess';
+  return null;
 }
 
 /** Below this much pack, the number stops being a fact and becomes a warning. */
@@ -461,6 +467,7 @@ function LightCard({
   const held = since === null ? null : Math.round((Date.now() - since) / 1000);
   const onMains = state === 'mains';
   const restore = power.prediction?.expectedRestoreTs ?? null;
+  const restoreHedge = hedge(power.prediction?.confidence);
 
   const runtime = live?.power.batteryRuntimeSec ?? power.batteryRuntimeSec;
   const packLeft = state === 'battery' && runtime !== null && held !== null ? runtime - held : null;
@@ -495,7 +502,7 @@ function LightCard({
    */
   const figures: { label: string; value: string }[] = [];
   if (held !== null) {
-    figures.push({ value: formatDuration(held), label: onMains ? 'on mains' : 'off for' });
+    figures.push({ value: formatDuration(held), label: onMains ? 'on mains' : 'since' });
   }
   if (packLeft !== null && packLeft > LOW_PACK_SEC) {
     figures.push({ value: formatDuration(packLeft), label: 'pack left' });
@@ -529,7 +536,7 @@ function LightCard({
             <span>
               <BatteryIcon size={15} /> Expected back
             </span>
-            <span className="restore-hedge">{hedge(power.prediction?.confidence)}</span>
+            {restoreHedge && <span className="restore-hedge">{restoreHedge}</span>}
           </div>
           <span className="restore-time">{localTime(restore)}</span>
           <span className="restore-left">
@@ -642,10 +649,15 @@ function DataCard({
    * Days left in the month against days the allowance will actually last. A
    * bar at 78% is a fact; "four days short" is the same fact in the units the
    * decision is made in.
+   *
+   * Left in the *cycle*, which is the thing the allowance resets with. This
+   * used to count to the end of the calendar month off the phone's own clock,
+   * and on a plan that bills from the 5th that is a different date entirely -
+   * the card would promise the data had to last to the 30th when it only had
+   * to reach the 4th, and call a comfortable month four days short.
    */
-  const now = new Date();
-  const daysLeft =
-    new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate() + 1;
+  const { day: cycleDay, of: cycleDays } = cycleProgress(usage);
+  const daysLeft = cycleDays - cycleDay + 1;
   const perDay = usage.days.length
     ? usage.days.reduce((a, d) => a + d.downBytes + d.upBytes, 0) / usage.days.length
     : 0;
@@ -669,6 +681,7 @@ function DataCard({
   return (
     <Card
       title="Data this month"
+      meta={cycleLabel(usage)}
       action={<SeeAll onClick={() => onNavigate('data')}>Breakdown</SeeAll>}
     >
       <div className="usage-summary">
@@ -683,7 +696,7 @@ function DataCard({
       {short !== null && (
         <p className="notice notice-warn">
           At this rate the allowance runs out <strong>{short} {short === 1 ? 'day' : 'days'}</strong>{' '}
-          before the month does.
+          before the month ends on {formatDay(usage.cycleEnd)}.
         </p>
       )}
 
@@ -693,8 +706,14 @@ function DataCard({
         knowing there is the rate instead.
       */}
       <StatGrid>
+        {/*
+          The tile that says "Today" is the one place on the card a date can go
+          without being decoration: it is the only figure here measured over a
+          single day, and it is the shortest answer to what day the rest of the
+          card is standing on.
+        */}
         <Stat
-          label="Today"
+          label={`Today, ${formatDay(usage.today)}`}
           value={formatBytes(todayBytes)}
           delta={todayVsUsual === null ? undefined : <Delta pct={todayVsUsual} polarity="up-bad" />}
           hint={todayVsUsual === null ? undefined : `usually ${formatBytes(perDay)}`}
@@ -705,16 +724,24 @@ function DataCard({
             <Stat
               label="Projected month end"
               value={usage.human['projected'] ?? formatBytes(usage.projectedMonthBytes)}
+              hint={`by ${formatDay(usage.cycleEnd)}`}
             />
           </>
         ) : (
           <>
-            <Stat label="Left" value={formatBytes(Math.max(0, cap - used))} tone={tone} />
+            {/*
+              Each hint now qualifies its own figure: how long the gigabytes
+              last belongs under the gigabytes, and the date the count runs out
+              at belongs under the count. "Days left 12 / data lasts 17" put
+              both readings on the tile that was only ever showing one of them.
+            */}
             <Stat
-              label="Days left"
-              value={daysLeft}
-              hint={lasts === null ? undefined : `data lasts ${lasts}`}
+              label="Left"
+              value={formatBytes(Math.max(0, cap - used))}
+              tone={tone}
+              hint={lasts === null ? undefined : `lasts ${lasts} ${lasts === 1 ? 'day' : 'days'}`}
             />
+            <Stat label="Days left" value={daysLeft} hint={`to ${formatDay(usage.cycleEnd)}`} />
           </>
         )}
       </StatGrid>

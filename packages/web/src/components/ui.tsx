@@ -18,11 +18,20 @@ export type Tone = 'neutral' | 'good' | 'warn' | 'bad' | 'accent';
 
 export function Card({
   title,
+  meta,
   action,
   children,
   className = '',
 }: {
   title?: string;
+  /**
+   * One quiet line under the title, for a heading that cannot be complete on
+   * its own. "Data this month" has to say which month; "Last 24 hours" says
+   * everything already. Use it where the title would otherwise be taken on
+   * trust and nowhere else - a subtitle that restates the title in longer
+   * words is exactly what the page header dropped, and for good reason.
+   */
+  meta?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
   className?: string;
@@ -31,7 +40,12 @@ export function Card({
     <section className={`card ${className}`.trim()}>
       {(title ?? action) && (
         <header className="card-head">
-          {title && <h2>{title}</h2>}
+          {title && (
+            <span className="card-title">
+              <h2>{title}</h2>
+              {meta && <span className="card-meta">{meta}</span>}
+            </span>
+          )}
           {action}
         </header>
       )}
@@ -542,20 +556,40 @@ export function Button({
   );
 }
 
-/** Range switcher. One control, used everywhere a view has time windows. */
+/**
+ * Segmented control.
+ *
+ * One control for every "which one of these" in the app: the time windows on
+ * Data and Light, the theme in settings, and the roster filter on Devices.
+ * That last one used to be a chip row, and the count is what it brought with
+ * it - "Online" and the number of devices that are online were two readings
+ * in two places, a filter at the top and a roster you had to finish scrolling
+ * to total, and putting the number inside the control you would press to see
+ * it turns picking a filter into reading the answer.
+ */
 export function Segmented<T extends string | number>({
   options,
   value,
   onChange,
   label,
+  wide = false,
 }: {
-  options: { value: T; label: string }[];
+  /** `count` is drawn at the tail. Zero is shown, not hidden - it is a fact about the set. */
+  options: { value: T; label: string; icon?: ReactNode; count?: number }[];
   value: T;
   onChange: (v: T) => void;
   label: string;
+  /**
+   * Run the full width of the column, options dividing it equally.
+   *
+   * For the control that is the screen's own, rather than one sitting in a
+   * card header beside a title - where a track stretched across the card
+   * would be a lot of grey holding three short words.
+   */
+  wide?: boolean;
 }): React.JSX.Element {
   return (
-    <div className="segmented" role="tablist" aria-label={label}>
+    <div className={`segmented ${wide ? 'is-wide' : ''}`} role="tablist" aria-label={label}>
       {options.map((o) => (
         <button
           key={String(o.value)}
@@ -568,7 +602,9 @@ export function Segmented<T extends string | number>({
             onChange(o.value);
           }}
         >
-          {o.label}
+          {o.icon}
+          <span>{o.label}</span>
+          {o.count !== undefined && <span className="segmented-count">{o.count}</span>}
         </button>
       ))}
     </div>
@@ -612,14 +648,12 @@ export function Switch({
  *
  * The Tempo sheet keeps a segmented control and a chip row as two different
  * things, and the split is worth honouring: a segmented control answers
- * "which one of these", so the ranges keep it, while a chip row answers
- * "which of these" and has room for a count.
+ * "which one of these", a chip row answers "which of these".
  *
- * The count is the whole reason this exists on Devices. "Online" and the
- * number of devices that are online were two readings in two places - a
- * filter at the top and a roster you had to finish scrolling to total - and
- * putting the number inside the control you would press to see it turns
- * picking a filter into reading the answer.
+ * Nothing in the app answers the second question yet. The Devices filter was
+ * a chip row until the segmented control learned to carry a count, and it is
+ * single-select, so it belongs in a track. This stays for the first
+ * multi-select filter, and for the dismissible form `onRemove` gives it.
  */
 export function Chip({
   children,

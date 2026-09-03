@@ -109,6 +109,12 @@ export default defineConfig({
     },
   },
   server: {
+    /*
+     * All interfaces, not just loopback. Vite's default binds 127.0.0.1, so
+     * the dev server is invisible to every phone on the LAN - which is where
+     * this app is actually read.
+     */
+    host: true,
     port: 5173,
     proxy: {
       '/api': {

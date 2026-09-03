@@ -22,9 +22,11 @@ import {
   ago,
 } from '../components/ui.tsx';
 import { PageHeader } from '../components/PageHeader.tsx';
+import { SubscriptionCard } from '../components/Subscription.tsx';
 import { TimeChart, type ChartSeries } from '../components/TimeChart.tsx';
 import { DailyBars } from '../components/DailyBars.tsx';
 import { endpoints, humanError, useApi, type HourlyOptical } from '../lib/api.ts';
+import { cycleLabel, cycleProgress, formatDay } from '../lib/cycle.ts';
 import { directionColor, seriesColor } from '../lib/palette.ts';
 import { useResolvedTheme } from '../lib/theme.ts';
 import { useToast } from '../components/Toast.tsx';
@@ -49,6 +51,7 @@ export function Data(): React.JSX.Element {
   return (
     <>
       <PageHeader title="Data" />
+      <SubscriptionCard />
       <Consumption />
       <Traffic />
       <Speed />
@@ -62,8 +65,27 @@ export function Data(): React.JSX.Element {
 function Consumption(): React.JSX.Element {
   const usage = useApi<UsageSummary & { human: Record<string, string | null> }>('/usage');
 
+  /*
+   * The heading is read off the state rather than from inside `Async`, so the
+   * card keeps its frame while the numbers load. Nothing is claimed before it
+   * is known: until the summary arrives there is no window to name, and the
+   * title stands alone exactly as it did.
+   *
+   * "September · day 3 of 30" is the whole answer to two questions the card
+   * used to leave open - which month, and how far into it - and the second is
+   * what decides whether the projection below is worth anything. A rate read
+   * off three days is a guess; off twenty-seven it is nearly the bill.
+   */
+  const period = usage.data;
+  const progress = period && cycleProgress(period);
+
   return (
-    <Card title="This billing month">
+    <Card
+      title="This billing month"
+      meta={
+        period && progress && `${cycleLabel(period)} · day ${progress.day} of ${progress.of}`
+      }
+    >
       <Async state={usage}>
         {(data) => {
           const cap = data.capBytes;
@@ -101,7 +123,11 @@ function Consumption(): React.JSX.Element {
               <Hero
                 value={formatBytes(data.monthToDateBytes)}
                 tone={tone}
-                caption={cap ? `of ${formatBytes(cap)} used` : 'used so far — this plan has no cap'}
+                caption={
+                  cap
+                    ? `of ${formatBytes(cap)} used`
+                    : `used since ${formatDay(data.cycleStart)} — this plan has no cap`
+                }
               />
 
               {fraction !== null && (
@@ -115,11 +141,19 @@ function Consumption(): React.JSX.Element {
               )}
 
               <StatGrid>
+                {/*
+                  "Month end" is a date, so it says which one. The tile was
+                  asking to be trusted about the one thing it would not name.
+                */}
                 <Stat
                   label="Projected month end"
                   value={data.human['projected'] ?? formatBytes(data.projectedMonthBytes)}
                   tone={cap !== null && data.projectedMonthBytes > cap ? 'bad' : 'neutral'}
-                  hint={cap !== null && data.projectedMonthBytes > cap ? 'over the cap' : 'at this rate'}
+                  hint={
+                    cap !== null && data.projectedMonthBytes > cap
+                      ? `over the cap by ${formatDay(data.cycleEnd)}`
+                      : `at this rate, by ${formatDay(data.cycleEnd)}`
+                  }
                 />
                 <Stat
                   label="Daily average"

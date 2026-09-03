@@ -49,6 +49,24 @@ export const config = {
      * boundary. Set it if you expose the port more widely.
      */
     accessCode: str('ACCESS_CODE', ''),
+    /**
+     * A TLS certificate and its private key, in PEM. Both or neither.
+     *
+     * This is not about eavesdroppers on your own LAN. It is what makes the
+     * dashboard installable: a browser only registers a service worker on a
+     * secure origin, and `http://192.168.x.x` is not one however local it is.
+     * Served over plain http, "Add to home screen" on Android gives a browser
+     * shortcut rather than the app, and nothing is ever cached for offline -
+     * which is precisely the state you need it in during an outage.
+     *
+     * Loopback is the exception browsers make, so a desktop looking at
+     * 127.0.0.1 sees the full PWA and the phone on the same LAN does not.
+     * That asymmetry is the whole reason this setting exists. The README has
+     * the `tailscale serve` recipe, which is the way to get a genuinely
+     * trusted certificate for a machine with no public DNS name.
+     */
+    tlsCert: str('TLS_CERT_FILE', ''),
+    tlsKey: str('TLS_KEY_FILE', ''),
   },
 
   db: {
@@ -240,6 +258,13 @@ export function assertUsableConfig(): void {
     problems.push(
       'ONT_PASS is not set. Copy .env.example to .env and put the ONT web password in it. ' +
         'Without it every ONT poll fails and the dashboard shows a permanent outage.',
+    );
+  }
+  if (Boolean(config.server.tlsCert) !== Boolean(config.server.tlsKey)) {
+    problems.push(
+      'TLS_CERT_FILE and TLS_KEY_FILE go together. With one of them set the server would fall ' +
+        'back to http and quietly stop being installable on a phone, which is the only reason ' +
+        'to set either.',
     );
   }
   if (config.intervals.probeSec < 5) {

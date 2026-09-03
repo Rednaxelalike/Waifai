@@ -15,6 +15,8 @@ import type {
   ProbeSample,
   ProbeTier,
   SpeedtestSample,
+  Subscription,
+  SubscriptionInput,
   ThroughputPoint,
   UsageBucket,
   WanSample,
@@ -647,6 +649,78 @@ export class Db {
     this.raw.prepare('DELETE FROM notices WHERE id = ?').run(id);
   }
 
+  // -- subscriptions -------------------------------------------------------
+
+  /**
+   * Newest window first. The whole table is a handful of rows a year, so it
+   * is read whole and sliced in the caller rather than paged.
+   */
+  listSubscriptions(): Subscription[] {
+    return (
+      this.raw
+        .prepare('SELECT * FROM subscriptions ORDER BY start_ts DESC, id DESC')
+        .all() as Record<string, unknown>[]
+    ).map(rowToSubscription);
+  }
+
+  getSubscription(id: number): Subscription | null {
+    const r = this.raw.prepare('SELECT * FROM subscriptions WHERE id = ?').get(id) as
+      | Record<string, unknown>
+      | undefined;
+    return r === undefined ? null : rowToSubscription(r);
+  }
+
+  addSubscription(input: SubscriptionInput): Subscription {
+    const info = this.raw
+      .prepare(
+        `INSERT INTO subscriptions (paid_ts, start_ts, end_ts, plan, amount, reference, note)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        input.paidTs,
+        input.startTs,
+        input.endTs,
+        input.plan,
+        n(input.amount),
+        n(input.reference),
+        n(input.note),
+      );
+    return { id: Number(info.lastInsertRowid), ...input };
+  }
+
+  /**
+   * Whole-row rewrite from the merged record rather than a built-up SET list.
+   * Every field here is one somebody typed, so the caller already has to hold
+   * the complete form to render it, and a partial update statement would be
+   * seven optional bindings to save nothing.
+   */
+  updateSubscription(id: number, patch: Partial<SubscriptionInput>): Subscription | null {
+    const existing = this.getSubscription(id);
+    if (existing === null) return null;
+    const merged: Subscription = { ...existing, ...patch, id };
+    this.raw
+      .prepare(
+        `UPDATE subscriptions
+            SET paid_ts = ?, start_ts = ?, end_ts = ?, plan = ?, amount = ?, reference = ?, note = ?
+          WHERE id = ?`,
+      )
+      .run(
+        merged.paidTs,
+        merged.startTs,
+        merged.endTs,
+        merged.plan,
+        n(merged.amount),
+        n(merged.reference),
+        n(merged.note),
+        id,
+      );
+    return merged;
+  }
+
+  deleteSubscription(id: number): void {
+    this.raw.prepare('DELETE FROM subscriptions WHERE id = ?').run(id);
+  }
+
   // -- alert cooldown ------------------------------------------------------
 
   /** True when this alert key has not fired inside the cooldown window. */
@@ -786,6 +860,19 @@ function rowToIncident(r: Record<string, unknown>): Incident {
     end,
     durationSec: end === null ? null : Math.round((end - start) / 1000),
     detail: String(r['detail'] ?? ''),
+    note: strOrNull(r['note']),
+  };
+}
+
+function rowToSubscription(r: Record<string, unknown>): Subscription {
+  return {
+    id: Number(r['id']),
+    paidTs: Number(r['paid_ts']),
+    startTs: Number(r['start_ts']),
+    endTs: Number(r['end_ts']),
+    plan: String(r['plan'] ?? ''),
+    amount: numOrNull(r['amount']),
+    reference: strOrNull(r['reference']),
     note: strOrNull(r['note']),
   };
 }

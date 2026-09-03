@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Db } from '../db/index.ts';
 import { IncidentTracker, buildUptimeReport, classify, type HealthInput } from './incidents.ts';
-import { counterDelta } from './usage.ts';
+import { counterDelta, cycleEnd, cycleStart } from './usage.ts';
 import { config } from '../config.ts';
 
 /**
@@ -149,6 +149,34 @@ test('WAN counter deltas survive an ONT reboot', () => {
   assert.equal(counterDelta(null, 5_000), 0);
   assert.equal(counterDelta(1000, null), 0);
 });
+
+test('a billing cycle ends the day before the next one starts', () => {
+  // Whatever the boundary day, the cycle a moment belongs to has to contain
+  // that moment and butt up against the next one - no gap, no overlap. The
+  // length falls out of the calendar rather than being assumed to be 31, which
+  // is what the projection multiplies by.
+  const day = Math.min(28, Math.max(1, config.usage.cycleStartDay));
+
+  for (const iso of ['2026-01-15', '2026-02-27', '2026-03-01', '2026-12-31', '2027-02-28']) {
+    const now = Date.parse(`${iso}T12:00:00Z`);
+    const start = cycleStart(now);
+    const end = cycleEnd(now);
+
+    assert.equal(Number(start.slice(8, 10)), day, `${iso}: cycle starts on the boundary day`);
+    assert.ok(start <= end, `${iso}: the cycle runs forwards`);
+
+    // The day after this cycle ends opens the next one, on the same boundary.
+    const nextStart = cycleStart(Date.parse(`${end}T12:00:00Z`) + 86_400_000);
+    assert.equal(nextStart, isoAfter(end), `${iso}: cycles butt up with no gap`);
+
+    const length = Math.round((Date.parse(end) - Date.parse(start)) / 86_400_000) + 1;
+    assert.ok(length >= 28 && length <= 31, `${iso}: ${length} days is a plausible cycle`);
+  }
+});
+
+function isoAfter(iso: string): string {
+  return new Date(Date.parse(`${iso}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+}
 
 test('device metadata entered by a human survives ONT rediscovery', () => {
   const db = memoryDb();

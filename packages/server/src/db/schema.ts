@@ -184,4 +184,22 @@ export const MIGRATIONS: readonly string[] = [
   -- this system can get that the mains supply has gone.
   ALTER TABLE devices ADD COLUMN mains_witness INTEGER NOT NULL DEFAULT 0;
   `,
+
+  // 4 - what the line costs, and how long it is paid up for
+  `
+  -- Entirely hand-entered. The ONT knows nothing about billing, so this is
+  -- the one table in the database with no collector behind it: somebody pays
+  -- MTN, then types in the three dates that came out of it.
+  CREATE TABLE IF NOT EXISTS subscriptions (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    paid_ts   INTEGER NOT NULL,
+    start_ts  INTEGER NOT NULL,
+    end_ts    INTEGER NOT NULL,
+    plan      TEXT    NOT NULL DEFAULT '',
+    amount    REAL,
+    reference TEXT,
+    note      TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_subs_end ON subscriptions (end_ts);
+  `,
 ];

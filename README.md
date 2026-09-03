@@ -82,9 +82,8 @@ npm run build
 npm start
 ```
 
-Open `http://<host-ip>:8477`, then use the browser's "Add to home screen" to install
-it. On Android that gives a real icon and a fullscreen app; on iOS use Share → Add to
-Home Screen.
+The server prints every address it can be reached at. Open one of them to read the
+dashboard — but to *install* it on a phone, see "Putting it on a phone" below.
 
 ### Development
 
@@ -113,12 +112,47 @@ meaningless from inside a bridge network.
 
 **systemd** (lighter on a Pi): see `deploy/waifai.service`.
 
-### Reaching it from outside the house
+### Putting it on a phone
 
-MTN FibreX puts you behind CGNAT, so port forwarding is not available. Install
-[Tailscale](https://tailscale.com) on the host and on each phone. The tailnet then
-*is* the authentication boundary, which is why `ACCESS_CODE` is empty by default —
-set it only if you expose the port more widely.
+Reading it over `http://<host-ip>:8477` works. **Installing** it does not, and the
+reason is not this app:
+
+> A browser only registers a service worker on a *secure origin*, and loopback is the
+> only address it exempts. `http://192.168.100.7:8477` is not a secure origin however
+> local it is.
+
+So on plain http the desktop at `127.0.0.1` gets the whole PWA, and every phone on
+the same LAN gets a web page that Chrome will only add to the home screen as a
+browser shortcut — no standalone window, and nothing cached, which is exactly the
+state you do not want it in during an outage. The server warns about this at boot.
+
+MTN FibreX also puts you behind CGNAT, so port forwarding is not available and there
+is no public name to get a certificate for. [Tailscale](https://tailscale.com) solves
+both problems at once, which is why it is the recommended setup rather than one of
+two options:
+
+```bash
+tailscale up
+tailscale serve --bg 8477
+tailscale serve status      # prints the https://<host>.<tailnet>.ts.net URL
+```
+
+That needs HTTPS certificates enabled for your tailnet (admin console → DNS → HTTPS
+Certificates). Tailscale terminates TLS with a real, publicly trusted certificate and
+proxies to the server on `127.0.0.1:8477`, so nothing here needs configuring — leave
+`TLS_CERT_FILE` and `TLS_KEY_FILE` empty.
+
+Then install Tailscale on each phone, sign in to the same tailnet, and open that
+`https://…ts.net` URL. Chrome offers **Install app**; iOS uses Share → Add to Home
+Screen. The icon opens standalone, offline caching works, and it keeps working away
+from the house — the tailnet *is* the authentication boundary, which is why
+`ACCESS_CODE` is empty by default. Set it only if you expose the port more widely.
+
+If you would rather not run Tailscale, point `TLS_CERT_FILE` and `TLS_KEY_FILE` at a
+certificate for the host and the server speaks https directly. It has to be a
+certificate the phone trusts — a self-signed one will not do, because a certificate
+error blocks service worker registration just as plain http does, so the local CA has
+to be installed on every phone as well.
 
 ---
 

@@ -4,10 +4,9 @@ import type { Device } from '@waifai/shared';
 import {
   Async,
   Button,
-  Chip,
-  ChipGroup,
   Hint,
   SearchField,
+  Segmented,
   Switch,
   ago,
   localTime,
@@ -66,7 +65,7 @@ export function Devices(): React.JSX.Element {
   /*
    * The counts are taken after the search, not before it. That is what makes
    * them worth carrying in the control rather than in a line of their own:
-   * the number on a chip is how many devices you would be looking at if you
+   * the number on a tab is how many devices you would be looking at if you
    * pressed it, so the row answers "is what I am looking for hiding behind a
    * different filter" without pressing anything.
    */
@@ -97,18 +96,13 @@ export function Devices(): React.JSX.Element {
       />
 
       {roster !== null && (
-        <ChipGroup label="Filter">
-          {FILTERS.map((f) => (
-            <Chip
-              key={f.value}
-              selected={filter === f.value}
-              count={counts[f.value]}
-              onClick={() => setFilter(f.value)}
-            >
-              {f.label}
-            </Chip>
-          ))}
-        </ChipGroup>
+        <Segmented<Filter>
+          wide
+          label="Filter"
+          value={filter}
+          onChange={setFilter}
+          options={FILTERS.map((f) => ({ ...f, count: counts[f.value] }))}
+        />
       )}
 
       <Async state={devices}>
@@ -292,7 +286,7 @@ function DeviceForm({
   };
 
   return (
-    <div className="device-edit">
+    <div className="form-panel">
       <label className="field">
         <span>Name</span>
         <input
@@ -371,7 +365,7 @@ function DeviceForm({
         </div>
       </dl>
 
-      <div className="device-edit-actions">
+      <div className="form-actions">
         <Button variant="primary" busy={saving} onClick={() => void save()}>
           Save
         </Button>

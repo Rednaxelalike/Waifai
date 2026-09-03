@@ -214,6 +214,20 @@ export const MegaphoneIcon = (p: IconProps): React.JSX.Element => (
   </Glyph>
 );
 
+/*
+ * The month grid, for the one part of this app that deals in dates somebody
+ * typed rather than samples something recorded. The two ticks above the box
+ * are what stop it reading as a plain window at 16px.
+ */
+export const CalendarIcon = (p: IconProps): React.JSX.Element => (
+  <Glyph {...p}>
+    <rect x="3.4" y="5.2" width="17.2" height="15.4" rx="2.2" />
+    <path d="M3.4 9.9h17.2" />
+    <path d="M8.2 3.4v3.4" />
+    <path d="M15.8 3.4v3.4" />
+  </Glyph>
+);
+
 /* -- controls ------------------------------------------------------------- */
 
 export const RefreshIcon = (p: IconProps): React.JSX.Element => (

@@ -9,6 +9,9 @@ import type {
   ProbeSample,
   SpeedtestSample,
   StatusSnapshot,
+  Subscription,
+  SubscriptionInput,
+  SubscriptionSummary,
   ThroughputPoint,
   UptimeReport,
   UsageSummary,
@@ -202,6 +205,20 @@ export const endpoints = {
     }),
 
   usage: () => api<UsageSummary & { human: Record<string, string | null> }>('/usage'),
+
+  /*
+   * The only endpoints here that write something nobody measured. The summary
+   * comes back whole - current window, what is coming, and the ledger behind
+   * it - because the "which of these is the current one" rule belongs in one
+   * place and that place is not four phones.
+   */
+  subscriptions: () => api<SubscriptionSummary>('/subscriptions'),
+  addSubscription: (input: SubscriptionInput) =>
+    api<Subscription>('/subscriptions', { method: 'POST', body: JSON.stringify(input) }),
+  updateSubscription: (id: number, patch: Partial<SubscriptionInput>) =>
+    api<Subscription>(`/subscriptions/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deleteSubscription: (id: number) =>
+    api<{ ok: true }>(`/subscriptions/${id}`, { method: 'DELETE' }),
 
   notices: () => api<{ notices: Notice[] }>('/notices'),
   addNotice: (author: string, body: string, pinned = false) =>

@@ -291,6 +291,28 @@ export interface UsageSummary {
   /** Configured cap in bytes, or null when the plan is uncapped. */
   capBytes: number | null;
   days: UsageBucket[];
+
+  /*
+   * Which month this is a month of.
+   *
+   * Every total above is a total over a window, and the window is the billing
+   * cycle rather than the calendar: on a plan that bills from the 5th, "this
+   * month" runs 5 Aug to 4 Sep. A card that says "this month" without saying
+   * which one is asking to be read as the calendar month it is not, so the
+   * window travels with the numbers instead of being implied by them.
+   */
+  /** First day of the current cycle, YYYY-MM-DD in the household's timezone. */
+  cycleStart: string;
+  /** Its last day, inclusive - the day the projection projects to. */
+  cycleEnd: string;
+  /*
+   * The day the totals are through.
+   *
+   * Buckets are cut in the household's configured timezone and the phone
+   * reading them may be in a different one, or simply - late at night - on a
+   * different date. Which day "today" was is the server's to state.
+   */
+  today: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -360,6 +382,72 @@ export interface Notice {
 }
 
 // ---------------------------------------------------------------------------
+// Subscription
+// ---------------------------------------------------------------------------
+
+/**
+ * One payment for the line, and the window it bought.
+ *
+ * None of this comes off the router. The ONT reports light and bytes; it has
+ * never heard of a plan, a receipt or an expiry date, and MTN's own portal is
+ * behind a login this monitor has no business holding. So a subscription is a
+ * record the household keeps, and everything derived from it is arithmetic on
+ * dates somebody typed in after paying.
+ *
+ * Three dates rather than one because they are genuinely three different days.
+ * The payment clears when it clears; the plan starts when MTN turns it on,
+ * which can be that afternoon or the next morning; and the expiry is the only
+ * one of the three that decides whether there is internet tomorrow.
+ */
+export interface Subscription {
+  id: number;
+  /** When the money left the account. */
+  paidTs: Millis;
+  /** When the plan actually started running. */
+  startTs: Millis;
+  /** When it lapses. Entered as a day, stored as the last instant of that day. */
+  endTs: Millis;
+  /** What was bought, in the household's own words, e.g. "FibreX 25 Mbps". */
+  plan: string;
+  /** Naira. Null when nobody wrote the amount down. */
+  amount: number | null;
+  /** Receipt or transaction reference - the thing a support desk asks for. */
+  reference: string | null;
+  note: string | null;
+}
+
+/** The fields a person fills in. Everything else about a subscription is derived. */
+export type SubscriptionInput = Omit<Subscription, 'id'>;
+
+/** Where the line stands on being paid for. */
+export interface SubscriptionSummary {
+  /** The server's clock at the moment this was built, so countdowns agree. */
+  now: Millis;
+  /** The record covering `now`, or null when nothing recorded covers today. */
+  current: Subscription | null;
+  /** Paid for but not started: a renewal bought before the old one ran out. */
+  upcoming: Subscription | null;
+  /** The most recent lapsed record, which is what to show when nothing is current. */
+  previous: Subscription | null;
+  /**
+   * Seconds until the paid-up window ends. Negative once it has ended, which
+   * is how long the line has been running unpaid - a fact worth as much as the
+   * countdown, and the same number either way.
+   */
+  remainingSec: number | null;
+  /** How much of the current window is spent, 0..1. Null when nothing is current. */
+  elapsedFraction: number | null;
+  /**
+   * What previous subscriptions ran for, in whole days. It fills in the expiry
+   * when the next payment is recorded, so renewing is three taps rather than a
+   * calculation on a calendar.
+   */
+  typicalDays: number | null;
+  /** Newest first, including whatever is current. */
+  history: Subscription[];
+}
+
+// ---------------------------------------------------------------------------
 // WebSocket envelope
 // ---------------------------------------------------------------------------
 
@@ -400,6 +488,24 @@ export function formatDuration(sec: number): string {
   if (h) return `${h}h ${m}m`;
   if (m) return `${m}m ${s}s`;
   return `${s}s`;
+}
+
+/**
+ * Money, for the one currency this line is ever paid in.
+ *
+ * Not configurable, deliberately. Everything else here is already specific to
+ * an MTN FibreX line in Lagos - the probe tiers, the timezone default - and a
+ * currency setting nobody would ever change is one more setting to maintain.
+ * Whole naira unless the amount genuinely has kobo in it: a bill of
+ * "25,000.00" spends two characters saying nothing.
+ */
+export function formatNaira(amount: number): string {
+  if (!Number.isFinite(amount)) return '-';
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+  }).format(amount);
 }
 
 /**

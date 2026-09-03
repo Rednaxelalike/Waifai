@@ -122,11 +122,16 @@ export function Light(): React.JSX.Element {
  * A `medium confidence` chip is a machine describing its own uncertainty, and
  * "going by the last few cuts" is a clause you read to the end of to learn one
  * thing: how far to trust the time above it. Beside the label, it is glanced.
+ *
+ * Low confidence gets no chip. "rough guess" was the app disowning its own
+ * number in the same breath as printing it, which leaves a reader nothing to
+ * do with either; the row is already headed "Expected", and a time that turns
+ * out wrong says "Overdue - not back yet" underneath itself.
  */
-function hedge(confidence: string | undefined): string {
+function hedge(confidence: string | undefined): string | null {
   if (confidence === 'high') return 'clear pattern';
   if (confidence === 'medium') return 'last few cuts';
-  return 'rough guess';
+  return null;
 }
 
 /** Below this much pack, the number stops being a fact and becomes a warning. */
@@ -160,6 +165,7 @@ function RightNow({ report }: { report: PowerSummary }): React.JSX.Element {
   const m = STATE[report.state];
   const held = report.since === null ? null : Math.round((Date.now() - report.since) / 1000);
   const prediction = report.prediction;
+  const restoreHedge = hedge(prediction?.confidence);
   const onMains = report.state === 'mains';
 
   /*
@@ -218,7 +224,7 @@ function RightNow({ report }: { report: PowerSummary }): React.JSX.Element {
             <span>
               <BatteryIcon size={15} /> Expected back
             </span>
-            <span className="restore-hedge">{hedge(prediction.confidence)}</span>
+            {restoreHedge && <span className="restore-hedge">{restoreHedge}</span>}
           </div>
           <span className="restore-time">{localTime(prediction.expectedRestoreTs)}</span>
           <span className="restore-left">
