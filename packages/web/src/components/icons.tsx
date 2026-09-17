@@ -351,18 +351,30 @@ export function SpinnerIcon({ size = 20, ...props }: IconProps): React.JSX.Eleme
 /* -- brand ---------------------------------------------------------------- */
 
 /**
- * The app mark: a squircle tile with a lit signal arc.
+ * The app mark: a Wi-Fi glyph drawn as three lit glass tubes and a bead.
  *
- * Drawn with real depth - a graded base, a specular sweep across the top and a
- * hairline inner bevel - because a flat glyph sitting next to home-screen icons
- * is the thing that reads as unfinished. `id` namespaces the gradients so more
- * than one mark can share a page.
+ * The modelling is one radial gradient per band, centred on the arcs' own
+ * centre. Every point of an arc sits at the same distance from that centre, so
+ * a radial gradient there runs *across* the tube rather than down the page -
+ * which is what makes one gradient shade a whole sweep like a cross-section:
+ * deep red at both edges, a lit filament down the middle. A vertical gradient
+ * over the top then supplies the one thing a cross-section cannot know, which
+ * way is up. Under it all sits a blurred copy for the bloom, and over it a thin
+ * one for the filament itself.
+ *
+ * `id` namespaces the gradients and filters so more than one mark can share a
+ * page. The same geometry is written out in public/icon.svg and in the
+ * constants at the top of tools/make-icons.mjs; change it in all three.
  */
 export function WaifaiBrandMark({
   size = 36,
   id = 'wf',
   ...props
 }: SVGProps<SVGSVGElement> & { size?: number; id?: string }): React.JSX.Element {
+  const a1 = `${id}-a1`;
+  const a2 = `${id}-a2`;
+  const a3 = `${id}-a3`;
+  const dot = `${id}-dot`;
   return (
     <svg
       width={size}
@@ -374,56 +386,96 @@ export function WaifaiBrandMark({
       {...props}
     >
       <defs>
-        <linearGradient id={`${id}-base`} x1="32" y1="2" x2="32" y2="62" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#4A90EE" />
-          <stop offset="0.5" stopColor="#2A6FD0" />
-          <stop offset="1" stopColor="#153B78" />
-        </linearGradient>
-        <linearGradient id={`${id}-gloss`} x1="32" y1="3" x2="32" y2="33" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#FFFFFF" stopOpacity="0.4" />
-          <stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
-        </linearGradient>
-        <linearGradient id={`${id}-arc`} x1="14" y1="20" x2="50" y2="46" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#FFFFFF" />
-          <stop offset="1" stopColor="#D8E9FF" />
-        </linearGradient>
-        <radialGradient
-          id={`${id}-bloom`}
-          cx="0"
-          cy="0"
-          r="1"
-          gradientUnits="userSpaceOnUse"
-          gradientTransform="translate(32 44.4) rotate(90) scale(16)"
-        >
-          <stop stopColor="#FFFFFF" stopOpacity="0.5" />
-          <stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
+        <radialGradient id={`${id}-t1`} cx="32" cy="39.6" r="9.8" gradientUnits="userSpaceOnUse">
+          <stop offset="0.429" stopColor="#B22405" />
+          <stop offset="0.537" stopColor="#E85C05" />
+          <stop offset="0.629" stopColor="#FF9410" />
+          <stop offset="0.686" stopColor="#FFD558" />
+          <stop offset="0.714" stopColor="#FFF6CE" />
+          <stop offset="0.743" stopColor="#FFD055" />
+          <stop offset="0.811" stopColor="#FF8C0C" />
+          <stop offset="0.909" stopColor="#E04A04" />
+          <stop offset="1" stopColor="#A81F04" />
         </radialGradient>
+        <radialGradient id={`${id}-t2`} cx="32" cy="39.6" r="19.8" gradientUnits="userSpaceOnUse">
+          <stop offset="0.667" stopColor="#B22405" />
+          <stop offset="0.73" stopColor="#E85C05" />
+          <stop offset="0.783" stopColor="#FF9410" />
+          <stop offset="0.817" stopColor="#FFD558" />
+          <stop offset="0.833" stopColor="#FFF6CE" />
+          <stop offset="0.85" stopColor="#FFD055" />
+          <stop offset="0.89" stopColor="#FF8C0C" />
+          <stop offset="0.947" stopColor="#E04A04" />
+          <stop offset="1" stopColor="#A81F04" />
+        </radialGradient>
+        <radialGradient id={`${id}-t3`} cx="32" cy="39.6" r="31" gradientUnits="userSpaceOnUse">
+          <stop offset="0.748" stopColor="#B22405" />
+          <stop offset="0.796" stopColor="#E85C05" />
+          <stop offset="0.836" stopColor="#FF9410" />
+          <stop offset="0.862" stopColor="#FFD558" />
+          <stop offset="0.874" stopColor="#FFF6CE" />
+          <stop offset="0.887" stopColor="#FFD055" />
+          <stop offset="0.917" stopColor="#FF8C0C" />
+          <stop offset="0.96" stopColor="#E04A04" />
+          <stop offset="1" stopColor="#A81F04" />
+        </radialGradient>
+        <radialGradient id={`${id}-tdot`} cx="30.4" cy="48.3" r="7.6" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#FFFDF0" />
+          <stop offset="0.26" stopColor="#FFDD62" />
+          <stop offset="0.55" stopColor="#FF9412" />
+          <stop offset="0.82" stopColor="#EF5605" />
+          <stop offset="1" stopColor="#A81F04" />
+        </radialGradient>
+        <linearGradient id={`${id}-sheen`} x1="32" y1="8.65" x2="32" y2="55.4" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#FFFFFF" stopOpacity="0.34" />
+          <stop offset="0.34" stopColor="#FFFFFF" stopOpacity="0.06" />
+          <stop offset="0.55" stopColor="#FFFFFF" stopOpacity="0" />
+          <stop offset="0.76" stopColor="#8A1A00" stopOpacity="0.12" />
+          <stop offset="1" stopColor="#6B1200" stopOpacity="0.34" />
+        </linearGradient>
+        <filter id={`${id}-glow`} x="-25%" y="-25%" width="150%" height="150%">
+          <feGaussianBlur stdDeviation="2" />
+        </filter>
+        <filter id={`${id}-core`} x="-25%" y="-25%" width="150%" height="150%">
+          <feGaussianBlur stdDeviation="0.7" />
+        </filter>
+        <path id={a1} d="M25.343 41.763A7 7 0 1 1 38.657 41.763" />
+        <path id={a2} d="M16.308 44.699A16.5 16.5 0 1 1 47.692 44.699" />
+        <path id={a3} d="M6.226 47.974A27.1 27.1 0 1 1 57.774 47.974" />
+        <circle id={dot} cx="32" cy="50.1" r="5.2" />
       </defs>
 
-      {/* Squircle body */}
-      <path
-        d="M32 2c12.2 0 18.3 0 22.4 3.6C58 9.7 62 15.8 62 32s-4 22.3-7.6 26.4C50.3 62 44.2 62 32 62s-18.3 0-22.4-3.6C6 54.3 2 48.2 2 32S6 9.7 9.6 5.6C13.7 2 19.8 2 32 2Z"
-        fill={`url(#${id}-base)`}
-      />
-      {/* Specular sweep across the top third */}
-      <path
-        d="M32 2c12.2 0 18.3 0 22.4 3.6C57.4 9 61 13.9 61.8 25.5 52 31 42.3 33.6 32 33.6S12 31 2.2 25.5C3 13.9 6.6 9 9.6 5.6 13.7 2 19.8 2 32 2Z"
-        fill={`url(#${id}-gloss)`}
-      />
-      {/* Inner bevel */}
-      <path
-        d="M32 3.4c11.9 0 17.8 0 21.6 3.3 3.2 3.7 7 9.6 7 25.3s-3.8 21.6-7 25.3c-3.8 3.3-9.7 3.3-21.6 3.3s-17.8 0-21.6-3.3C7.2 53.6 3.4 47.7 3.4 32S7.2 10.4 10.4 6.7C14.2 3.4 20.1 3.4 32 3.4Z"
-        stroke="#FFFFFF"
-        strokeOpacity="0.26"
-        strokeWidth="1.2"
-      />
-      <circle cx="32" cy="44.4" r="16" fill={`url(#${id}-bloom)`} />
-      {/* Signal arcs, softest at the back */}
-      <g stroke={`url(#${id}-arc)`} strokeLinecap="round" fill="none" strokeWidth="4.4">
-        <path d="M15.5 27.5a23 23 0 0 1 33 0" strokeOpacity="0.42" />
-        <path d="M21.5 34.4a14.6 14.6 0 0 1 21 0" strokeOpacity="0.74" />
+      <g fill="none" strokeLinecap="round">
+        {/* The bloom, so the mark lights what it sits on */}
+        <g filter={`url(#${id}-glow)`} opacity="0.32" stroke="#FF7A06">
+          <use href={`#${a3}`} strokeWidth="7.8" />
+          <use href={`#${a2}`} strokeWidth="6.6" />
+          <use href={`#${a1}`} strokeWidth="5.6" />
+          <use href={`#${dot}`} fill="#FF7A06" stroke="none" />
+        </g>
+
+        {/* The tubes themselves, back band first */}
+        <use href={`#${a3}`} strokeWidth="7.8" stroke={`url(#${id}-t3)`} />
+        <use href={`#${a2}`} strokeWidth="6.6" stroke={`url(#${id}-t2)`} />
+        <use href={`#${a1}`} strokeWidth="5.6" stroke={`url(#${id}-t1)`} />
+        <use href={`#${dot}`} fill={`url(#${id}-tdot)`} stroke="none" />
+
+        {/* Which way is up */}
+        <g stroke={`url(#${id}-sheen)`}>
+          <use href={`#${a3}`} strokeWidth="7.8" />
+          <use href={`#${a2}`} strokeWidth="6.6" />
+          <use href={`#${a1}`} strokeWidth="5.6" />
+          <use href={`#${dot}`} fill={`url(#${id}-sheen)`} stroke="none" />
+        </g>
+
+        {/* The filament, and the bead's highlight */}
+        <g filter={`url(#${id}-core)`} stroke="#FFFBE6" opacity="0.8">
+          <use href={`#${a3}`} strokeWidth="1.25" />
+          <use href={`#${a2}`} strokeWidth="1.05" />
+          <use href={`#${a1}`} strokeWidth="0.9" />
+        </g>
+        <circle cx="30.3" cy="48.1" r="1.45" fill="#FFFEF6" />
       </g>
-      <circle cx="32" cy="44.4" r="4.6" fill="#FFFFFF" />
     </svg>
   );
 }

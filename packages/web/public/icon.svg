@@ -1,25 +1,107 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Waifai">
+  <!--
+    The app icon: the mark on the dark plate a home screen needs behind it.
+
+    The mark itself is `WaifaiBrandMark` in src/components/icons.tsx and the
+    PNG sizes come out of tools/make-icons.mjs; all three carry the same
+    numbers and have to be changed together.
+  -->
   <defs>
-    <linearGradient id="base" x1="32" y1="2" x2="32" y2="62" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#4A90EE"/>
-      <stop offset="0.5" stop-color="#2A6FD0"/>
-      <stop offset="1" stop-color="#153B78"/>
+    <linearGradient id="plate" x1="32" y1="2" x2="32" y2="62" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#26282D"/>
+      <stop offset="0.55" stop-color="#17181C"/>
+      <stop offset="1" stop-color="#0D0E11"/>
     </linearGradient>
-    <linearGradient id="gloss" x1="32" y1="3" x2="32" y2="33" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFFFFF" stop-opacity="0.4"/>
-      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
-    </linearGradient>
-    <radialGradient id="bloom" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(32 44.4) rotate(90) scale(16)">
-      <stop stop-color="#FFFFFF" stop-opacity="0.5"/>
-      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    <radialGradient id="t1" cx="32" cy="39.6" r="9.8" gradientUnits="userSpaceOnUse">
+      <stop offset="0.429" stop-color="#B22405"/>
+      <stop offset="0.537" stop-color="#E85C05"/>
+      <stop offset="0.629" stop-color="#FF9410"/>
+      <stop offset="0.686" stop-color="#FFD558"/>
+      <stop offset="0.714" stop-color="#FFF6CE"/>
+      <stop offset="0.743" stop-color="#FFD055"/>
+      <stop offset="0.811" stop-color="#FF8C0C"/>
+      <stop offset="0.909" stop-color="#E04A04"/>
+      <stop offset="1" stop-color="#A81F04"/>
     </radialGradient>
+    <radialGradient id="t2" cx="32" cy="39.6" r="19.8" gradientUnits="userSpaceOnUse">
+      <stop offset="0.667" stop-color="#B22405"/>
+      <stop offset="0.73" stop-color="#E85C05"/>
+      <stop offset="0.783" stop-color="#FF9410"/>
+      <stop offset="0.817" stop-color="#FFD558"/>
+      <stop offset="0.833" stop-color="#FFF6CE"/>
+      <stop offset="0.85" stop-color="#FFD055"/>
+      <stop offset="0.89" stop-color="#FF8C0C"/>
+      <stop offset="0.947" stop-color="#E04A04"/>
+      <stop offset="1" stop-color="#A81F04"/>
+    </radialGradient>
+    <radialGradient id="t3" cx="32" cy="39.6" r="31" gradientUnits="userSpaceOnUse">
+      <stop offset="0.748" stop-color="#B22405"/>
+      <stop offset="0.796" stop-color="#E85C05"/>
+      <stop offset="0.836" stop-color="#FF9410"/>
+      <stop offset="0.862" stop-color="#FFD558"/>
+      <stop offset="0.874" stop-color="#FFF6CE"/>
+      <stop offset="0.887" stop-color="#FFD055"/>
+      <stop offset="0.917" stop-color="#FF8C0C"/>
+      <stop offset="0.96" stop-color="#E04A04"/>
+      <stop offset="1" stop-color="#A81F04"/>
+    </radialGradient>
+    <radialGradient id="tdot" cx="30.4" cy="48.3" r="7.6" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFDF0"/>
+      <stop offset="0.26" stop-color="#FFDD62"/>
+      <stop offset="0.55" stop-color="#FF9412"/>
+      <stop offset="0.82" stop-color="#EF5605"/>
+      <stop offset="1" stop-color="#A81F04"/>
+    </radialGradient>
+    <linearGradient id="sheen" x1="32" y1="8.65" x2="32" y2="55.4" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="0.34" stop-color="#FFFFFF" stop-opacity="0.06"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0"/>
+      <stop offset="0.76" stop-color="#8A1A00" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#6B1200" stop-opacity="0.34"/>
+    </linearGradient>
+    <filter id="glow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="2"/>
+    </filter>
+    <filter id="core" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="0.7"/>
+    </filter>
+    <path id="a1" d="M25.343 41.763A7 7 0 1 1 38.657 41.763"/>
+    <path id="a2" d="M16.308 44.699A16.5 16.5 0 1 1 47.692 44.699"/>
+    <path id="a3" d="M6.226 47.974A27.1 27.1 0 1 1 57.774 47.974"/>
+    <circle id="dot" cx="32" cy="50.1" r="5.2"/>
   </defs>
-  <path d="M32 2c12.2 0 18.3 0 22.4 3.6C58 9.7 62 15.8 62 32s-4 22.3-7.6 26.4C50.3 62 44.2 62 32 62s-18.3 0-22.4-3.6C6 54.3 2 48.2 2 32S6 9.7 9.6 5.6C13.7 2 19.8 2 32 2Z" fill="url(#base)"/>
-  <path d="M32 2c12.2 0 18.3 0 22.4 3.6C57.4 9 61 13.9 61.8 25.5 52 31 42.3 33.6 32 33.6S12 31 2.2 25.5C3 13.9 6.6 9 9.6 5.6 13.7 2 19.8 2 32 2Z" fill="url(#gloss)"/>
-  <circle cx="32" cy="44.4" r="16" fill="url(#bloom)"/>
-  <g stroke="#FFFFFF" stroke-linecap="round" fill="none" stroke-width="4.4">
-    <path d="M15.5 27.5a23 23 0 0 1 33 0" stroke-opacity="0.42"/>
-    <path d="M21.5 34.4a14.6 14.6 0 0 1 21 0" stroke-opacity="0.74"/>
+
+  <path d="M32 2c12.2 0 18.3 0 22.4 3.6C58 9.7 62 15.8 62 32s-4 22.3-7.6 26.4C50.3 62 44.2 62 32 62s-18.3 0-22.4-3.6C6 54.3 2 48.2 2 32S6 9.7 9.6 5.6C13.7 2 19.8 2 32 2Z" fill="url(#plate)"/>
+
+  <g transform="translate(6.4 6.4) scale(0.8)" fill="none" stroke-linecap="round">
+    <!-- The bloom, so the mark lights what it sits on -->
+    <g filter="url(#glow)" opacity="0.32" stroke="#FF7A06">
+      <use href="#a3" stroke-width="7.8"/>
+      <use href="#a2" stroke-width="6.6"/>
+      <use href="#a1" stroke-width="5.6"/>
+      <use href="#dot" fill="#FF7A06" stroke="none"/>
+    </g>
+
+    <!-- The tubes themselves, back band first -->
+    <use href="#a3" stroke-width="7.8" stroke="url(#t3)"/>
+    <use href="#a2" stroke-width="6.6" stroke="url(#t2)"/>
+    <use href="#a1" stroke-width="5.6" stroke="url(#t1)"/>
+    <use href="#dot" fill="url(#tdot)" stroke="none"/>
+
+    <!-- Which way is up -->
+    <g stroke="url(#sheen)">
+      <use href="#a3" stroke-width="7.8"/>
+      <use href="#a2" stroke-width="6.6"/>
+      <use href="#a1" stroke-width="5.6"/>
+      <use href="#dot" fill="url(#sheen)" stroke="none"/>
+    </g>
+
+    <!-- The filament, and the bead's highlight -->
+    <g filter="url(#core)" stroke="#FFFBE6" opacity="0.8">
+      <use href="#a3" stroke-width="1.25"/>
+      <use href="#a2" stroke-width="1.05"/>
+      <use href="#a1" stroke-width="0.9"/>
+    </g>
+    <circle cx="30.3" cy="48.1" r="1.45" fill="#FFFEF6"/>
   </g>
-  <circle cx="32" cy="44.4" r="4.6" fill="#FFFFFF"/>
 </svg>
