@@ -23,6 +23,7 @@ import {
   Stat,
   StatGrid,
   ago,
+  clockTime,
   localTime,
   type Tone,
 } from '../components/ui.tsx';
@@ -815,12 +816,29 @@ function Activity({ recent }: { recent: LiveEvent[] }): React.JSX.Element {
  * list layouts that differed by two pixels of gap.
  */
 function FeedRow({ item }: { item: ActivityItem }): React.JSX.Element {
+  /*
+   * The clock over the date, rather than "Sep 7, 11:42 AM" on one line.
+   *
+   * That single line is fifteen characters of index sitting in a row whose
+   * content is the sentence to its left, and it was taking so much of the
+   * width that the sentence lost the half that carried the reading -
+   * "Monitor came ..." with the duration truncated away. Stacked, the column
+   * is as wide as the clock alone, and the date is dropped entirely on the
+   * day it would say "today" to someone who can see the rows above it.
+   */
+  const when = new Date(item.ts);
+  const today = when.toDateString() === new Date().toDateString();
+
   return (
     <ListRow
       tone={item.tone}
       icon={item.tone === 'good' ? <CheckCircleIcon size={16} /> : <AlertTriangleIcon size={16} />}
       title={item.text}
-      valueSub={localTime(item.ts)}
+      {...(item.sub === undefined ? {} : { sub: item.sub })}
+      value={<span className="list-when">{clockTime(item.ts)}</span>}
+      {...(today
+        ? {}
+        : { valueSub: when.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) })}
     />
   );
 }

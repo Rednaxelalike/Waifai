@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { Incident, PowerState, PowerSummary } from '@waifai/shared';
+import { formatDuration, type Incident, type PowerState, type PowerSummary } from '@waifai/shared';
 import { useApi } from './api.ts';
 import { incidentMeta } from './incidents.ts';
 import type { LiveEvent } from './live.ts';
@@ -19,6 +19,8 @@ export interface ActivityItem {
   id: string;
   ts: number;
   text: string;
+  /** The quiet second line, where a reading is too long to sit in the title. */
+  sub?: string;
   tone: 'good' | 'warn' | 'bad';
 }
 
@@ -50,8 +52,19 @@ export function useActivity(recent: LiveEvent[]): {
   const seeded = useMemo(() => {
     const out: ActivityItem[] = [];
 
+    /*
+     * While the monitor is down it cannot see what is powering the router, so
+     * every collector_down incident is shadowed by an "unknown" power span
+     * covering the same minutes. Both were being listed, one under the other,
+     * which is one fact wearing two rows: "Monitor was off" already says why
+     * the power is unknown. The incident is the one that explains itself, so
+     * the span it covers is dropped below.
+     */
+    const blind: Array<[number, number]> = [];
+
     for (const inc of incidents.data?.incidents ?? []) {
       const monitor = inc.kind === 'collector_down';
+      if (monitor) blind.push([inc.start, inc.end ?? Infinity]);
       out.push({
         id: `inc-open-${inc.id}`,
         ts: inc.start,
@@ -59,19 +72,29 @@ export function useActivity(recent: LiveEvent[]): {
         tone: monitor ? 'warn' : inc.severity === 'critical' ? 'bad' : 'warn',
       });
       if (inc.end !== null) {
-        const mins = Math.max(1, Math.round((inc.durationSec ?? 0) / 60));
+        /*
+         * formatDuration, not minutes. "after 1272 min" is the number the
+         * database happens to hold rather than the one a person would say,
+         * and a row reading like a log line is the tell that nobody chose it.
+         * The server's own log says "21h 12m" for this same gap.
+         */
+        const took = formatDuration(inc.durationSec ?? 0);
         out.push({
           id: `inc-close-${inc.id}`,
           ts: inc.end,
           // "Back up" is wrong for the one incident kind that is about this
           // app rather than about the line.
-          text: monitor ? `Monitor came back after ${mins} min` : `Back up after ${mins} min`,
+          text: monitor ? 'Monitor back' : 'Back up',
+          sub: `after ${took}`,
           tone: 'good',
         });
       }
     }
 
     for (const span of power.data?.spans ?? []) {
+      if (span.state === 'unknown' && blind.some(([a, b]) => span.start >= a && span.start <= b)) {
+        continue;
+      }
       out.push({
         id: `pwr-${span.id}`,
         ts: span.start,
