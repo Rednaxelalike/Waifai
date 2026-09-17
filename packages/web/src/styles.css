@@ -53,44 +53,25 @@
   --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 
   /*
-   * Light theme. Discord's light surfaces run white -> #F2F3F5 -> #EBEDEF ->
-   * #E3E5E8 -> #DBDEE1, and the page sits below the white cards on it. The
-   * step is deliberately far smaller than Discord's: #FCFDFD is about one
-   * percent off white, which is enough for a card edge to be visible without
-   * the ground reading as a grey panel of its own. The 1px ring inside
-   * `--shadow-card` still does most of the separating, so keep it - at this
-   * distance the fill alone would not hold the cards apart.
-   *
-   * The ramp below is untouched: `--surface-2` and everything under it are
-   * still the steps, and they are what a block nested inside a card uses to
-   * separate itself. Only the ground moved.
+   * Borderless container hierarchy (fintech card style).
+   * Visual hierarchy is carried by container fills and spacing rather than
+   * borders or outlines. Crisp white canvas, soft neutral container cards,
+   * nested white tiles, and generous squircle radii.
    */
-  --page: #fcfdfd;
-  --surface: #ffffff;
-  --surface-2: #f2f3f5;
-  --surface-3: #ebedef;
-  --surface-sunken: #ebedef;
-  /* Backing for device artwork - always a shade the hardware can sit on. */
-  --plate: #e3e5e8;
-  --hairline: #e3e5e8;
-  --hairline-strong: #dbdee1;
-  /*
-   * The edge of an inset panel - a block of related readings sitting inside a
-   * card. Panels used to be painted `--surface-sunken`, and two of them
-   * stacked eight pixels apart read as one grey region with a seam in it
-   * rather than as two boxes; in light theme that grey is also the page
-   * colour, so the panel read as a hole punched through the card. An outline
-   * costs one pixel, groups exactly as well, and stays one object per box
-   * however many of them stack up.
-   */
-  --panel-edge: var(--hairline);
+  --page: #ffffff;
+  --surface: #f4f5f7;
+  --surface-2: #ffffff;
+  --surface-3: #e8ebf0;
+  --surface-sunken: #eaedf2;
+  --plate: #eaedf2;
+  --hairline: transparent;
+  --hairline-strong: transparent;
+  --panel-edge: transparent;
 
-  --ink: #060607;
-  --ink-2: #4e5058;
-  --ink-muted: #5c5e66;
-  /* On white this is 3.7:1 - large text and icons only, never a sentence. */
-  --ink-faint: #80848e;
-  /* Text that sits on a filled blurple, green or red. */
+  --ink: #080a0f;
+  --ink-2: #4a4f5d;
+  --ink-muted: #727888;
+  --ink-faint: #9ea4b4;
   --on-solid: #ffffff;
 
   --accent: #5865f2;
@@ -99,88 +80,51 @@
   --accent-ink: #4752c4;
   --accent-wash: rgba(88, 101, 242, 0.1);
 
-  /* Discord's secondary button: a filled grey, never an outline. */
-  --btn-2: #e3e5e8;
-  --btn-2-hover: #dbdee1;
-  --btn-2-ink: #060607;
-  /* The selected pill in a segmented control - white here, grey in dark. */
+  --text-btn-ink: var(--ink);
+
+  --btn-2: #eaedf2;
+  --btn-2-hover: #e0e4eb;
+  --btn-2-ink: #080a0f;
   --raised: #ffffff;
 
-  --good: #23a55a;
-  --good-ink: #0f7a41; /* derived: #23A55A is 3.2:1 on white, this is 5.4:1 */
-  --good-wash: rgba(35, 165, 90, 0.12);
+  /* Fintech vibrant emerald green */
+  --good: #10b981;
+  --good-ink: #059669;
+  --good-wash: rgba(16, 185, 129, 0.12);
 
-  --warn: #f0b232;
-  --warn-ink: #8a5a00; /* derived: Discord's amber is 1.9:1 on white */
-  --warn-wash: rgba(240, 178, 50, 0.18);
+  --warn: #f59e0b;
+  --warn-ink: #b45309;
+  --warn-wash: rgba(245, 158, 11, 0.14);
 
-  --bad: #da373c;
-  --bad-ink: #c62b30; /* derived from #DA373C for small text on white */
-  --bad-wash: rgba(218, 55, 60, 0.1);
+  --bad: #ef4444;
+  --bad-ink: #dc2626;
+  --bad-wash: rgba(239, 68, 68, 0.12);
 
-  --chart-grid: #e3e5e8;
+  --chart-grid: #eaedf2;
 
-  /*
-   * Down and up. Kept in step with `DIRECTIONAL` in lib/palette.ts, which is
-   * where the reasoning for a green and a red lives - the charts on Data read
-   * the pair from there, the home sparklines read it from here.
-   */
-  --lane-down: #12996a;
-  --lane-up: #c4384f;
-  /*
-   * The latency lane. It is the blue the round-trip chart on Data leads with -
-   * slot 0 of the categorical ramp - so the shape under "Latency" on Home and
-   * the line the reader meets when they go looking for it are the same colour.
-   * It has to be a third hue rather than a tint of the other two: the pair
-   * below is a direction, and latency is not one.
-   */
-  --lane-ping: #2a78d6;
+  --lane-down: #10b981;
+  --lane-up: #ef4444;
+  --lane-ping: #3b82f6;
 
-  /*
-   * Discord's tooltip is the same near-black in both themes - it is a thing
-   * laid over the interface, not a thing in it, so it does not follow the
-   * theme. Declared once here because it has no light counterpart.
-   */
   --tooltip: #111214;
   --tooltip-ink: #ffffff;
   --tooltip-ink-2: #b5bac1;
 
-  /*
-   * Discord's elevation, which is a stack of hard 1px steps rather than a
-   * blur. It reads as a card sitting on a surface instead of floating above it.
-   */
-  --shadow-sm: 0 1px 0 rgba(6, 6, 7, 0.05), 0 1.5px 0 rgba(6, 6, 7, 0.03), 0 2px 0 rgba(6, 6, 7, 0.03);
-  --shadow-pop: 0 8px 16px rgba(6, 6, 7, 0.16);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-pop: 0 14px 36px rgba(0, 0, 0, 0.09);
+  --shadow-card: none;
 
-  /*
-   * Card rest, and the one place light stops following the hard-step rule
-   * above. A section on this page is a sheet lying on the grey, so its whole
-   * edge comes out of the shadow - a 1px ring, then two soft steps - instead
-   * of a hairline border sat under a stack of hard ones, which drew the top
-   * edge twice in two slightly different greys. `--shadow-sm` is left alone
-   * for the small raised things (the segmented pill), where a card's
-   * elevation on a 28px control is a card-sized shadow on a tab.
-   */
-  --shadow-card: 0 0 0 1px rgba(3, 7, 18, 0.08), 0 1px 2px -1px rgba(3, 7, 18, 0.08),
-    0 2px 4px 0 rgba(3, 7, 18, 0.04);
-
-  /* Discord's radii: 4 / 8 / 12 / 16 / 24, and round. */
-  --r-xs: 4px;
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r: 16px;
-  --r-lg: 24px;
+  /* Generous rounded squircle radii */
+  --r-xs: 6px;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r: 22px;
+  --r-lg: 28px;
   --r-full: 999px;
 
-  --gap: 12px;
+  --gap: 14px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /*
-   * Motion. The curves are Discord's own - they ship exactly these three in
-   * their bundle - and the durations are the peaks of its duration histogram.
-   * `--ease-decel` is fitted to a Files by Google fling: 840 px/s to rest in
-   * 450 ms. Keep the JS side (lib/motion.ts) in step with these.
-   */
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
@@ -193,130 +137,91 @@
   --d-medium: 250ms;
   --d-slow: 300ms;
 
-  /*
-   * Pressed, and the edge a tint needs to be an object.
-   *
-   * These are the one thing the Tempo sheet has that this file did not. Every
-   * interactive surface in that Figma file is specified three times - base,
-   * hover, pressed - and every tinted surface carries a border a step stronger
-   * than its fill. Waifai had base and hover, pressed on the primary button
-   * only, and no tinted borders at all, which is why a chip held under a thumb
-   * did nothing and a pale badge on a sunken card had no outline.
-   *
-   * The pressed values keep walking Discord's own ladder rather than inventing
-   * a darker grey: #E3E5E8 -> #DBDEE1 -> #D4D7DC is one more step of the same
-   * size. The edges are each tone at full strength held down to about a third,
-   * which is the ratio between `tag-*-bg` and `tag-*-border` in the sheet.
-   */
-  --surface-press: #dbdee1;
-  --btn-2-press: #d4d7dc;
-  --bad-press: #a12128;
+  --surface-press: #e2e5eb;
+  --btn-2-press: #d8dce4;
+  --bad-press: #b91c1c;
 
-  /*
-   * The inverted button: the sheet's near-black fill with white on it, which
-   * in a themed app has to mean "the other end of this theme" rather than
-   * "black". So it is the ink colour as a fill and the page colour as text,
-   * and in dark it comes out as a white button - which is what an inverted
-   * button is for, one action that outranks a primary without shouting in
-   * blurple.
-   */
-  --inverted: #060607;
-  --inverted-hover: #1e1f22;
-  --inverted-press: #2b2d31;
+  --inverted: #080a0f;
+  --inverted-hover: #1e2129;
+  --inverted-press: #2c303b;
   --inverted-ink: #ffffff;
 
-  --accent-edge: rgba(88, 101, 242, 0.32);
-  --good-edge: rgba(35, 165, 90, 0.32);
-  --warn-edge: rgba(240, 178, 50, 0.45);
-  --bad-edge: rgba(218, 55, 60, 0.3);
+  --accent-edge: transparent;
+  --good-edge: transparent;
+  --warn-edge: transparent;
+  --bad-edge: transparent;
 
-  /*
-   * Focus, for the fields that draw their own border. The page-wide
-   * `:focus-visible` outline sits outside the box; a field that already turns
-   * blurple on focus needs the halo instead, or the outline traces a shape
-   * two pixels off the one that just changed colour.
-   */
   --ring: 0 0 0 3px var(--accent-wash);
 
   color-scheme: light;
 }
 
 /*
- * Dark theme. This is Discord's dark ladder: #1E1F22 behind everything,
- * #2B2D31 for panels, #313338 for the surface you read on, #383A40 for the
- * thing under your finger. Every one of these is a string in the shipped
- * bundle.
+ * Dark theme - borderless dark card containers on deep canvas.
  */
 :root[data-theme='dark'] {
-  --page: #1e1f22;
-  --surface: #2b2d31;
-  --surface-2: #313338;
-  --surface-3: #383a40;
-  --surface-sunken: #232428;
-  --plate: #383a40;
-  --hairline: #232428;
-  --hairline-strong: #383a40;
-  /* Dark hairlines go darker than the card, which is right for a divider and
-     invisible as an outline; a panel takes the step above the surface. */
-  --panel-edge: var(--hairline-strong);
+  --page: #090a0c;
+  --surface: #15181e;
+  --surface-2: #1e222a;
+  --surface-3: #282d38;
+  --surface-sunken: #111317;
+  --plate: #1e222a;
+  --hairline: transparent;
+  --hairline-strong: transparent;
+  --panel-edge: transparent;
 
-  --ink: #f2f3f5;
-  --ink-2: #b5bac1;
-  --ink-muted: #949ba4;
-  --ink-faint: #80848e;
+  --ink: #f3f4f7;
+  --ink-2: #b0b5c1;
+  --ink-muted: #838896;
+  --ink-faint: #626775;
   --on-solid: #ffffff;
 
-  --accent: #5865f2;
-  --accent-hover: #4752c4;
-  --accent-press: #3c45a5;
-  /* Discord's own text-brand for dark: full blurple is only 3:1 on a panel. */
-  --accent-ink: #949cf7;
-  --accent-wash: rgba(88, 101, 242, 0.15);
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-press: #4338ca;
+  --accent-ink: #818cf8;
+  --accent-wash: rgba(99, 102, 241, 0.15);
 
-  --btn-2: #4e5058;
-  --btn-2-hover: #6d6f78;
-  --btn-2-ink: #ffffff;
-  --raised: #4e5058;
+  --btn-2: #1e222a;
+  --btn-2-hover: #282d38;
+  --btn-2-ink: #f3f4f7;
+  --raised: #282d38;
 
-  --good: #23a55a;
-  --good-ink: #3fc47c; /* derived: #23A55A is 4.3:1 on #2B2D31 */
-  --good-wash: rgba(35, 165, 90, 0.15);
+  --good: #10b981;
+  --good-ink: #34d399;
+  --good-wash: rgba(16, 185, 129, 0.16);
 
-  --warn: #f0b232;
-  --warn-ink: #f0b232; /* 7.3:1 on a panel - Discord's value stands as text */
-  --warn-wash: rgba(240, 178, 50, 0.15);
+  --warn: #f59e0b;
+  --warn-ink: #fbbf24;
+  --warn-wash: rgba(245, 158, 11, 0.16);
 
-  --bad: #da373c;
-  --bad-ink: #f8797d; /* derived from Discord's dark #F23F43, which is 3.7:1 */
-  --bad-wash: rgba(242, 63, 67, 0.13);
+  --bad: #ef4444;
+  --bad-ink: #f87171;
+  --bad-wash: rgba(239, 68, 68, 0.16);
 
-  --chart-grid: #2b2d31;
+  --chart-grid: #1a1d24;
 
-  --lane-down: #3bc489;
-  --lane-up: #e8606e;
-  --lane-ping: #3987e5;
+  --lane-down: #10b981;
+  --lane-up: #ef4444;
+  --lane-ping: #3b82f6;
 
-  /* Dark elevation is a real shadow, because there is nothing to step against. */
-  --shadow-sm: 0 1px 0 rgba(0, 0, 0, 0.2), 0 2px 0 rgba(0, 0, 0, 0.08);
-  --shadow-pop: 0 8px 16px rgba(0, 0, 0, 0.24);
-  /* No ring in dark: there is no white page for a card edge to be cut out of. */
-  --shadow-card: var(--shadow-sm);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-pop: 0 16px 36px rgba(0, 0, 0, 0.45);
+  --shadow-card: none;
 
-  /* Pressed goes lighter here, because the ladder runs the other way. */
-  --surface-press: #404249;
-  --btn-2-press: #7c7f88;
-  --bad-press: #b02c30;
+  --surface-press: #2c313d;
+  --btn-2-press: #353a47;
+  --bad-press: #b91c1c;
 
-  --inverted: #f2f3f5;
-  --inverted-hover: #dbdee1;
-  --inverted-press: #cdd0d5;
-  --inverted-ink: #060607;
+  --inverted: #f3f4f7;
+  --inverted-hover: #e2e5eb;
+  --inverted-press: #d0d4dd;
+  --inverted-ink: #090a0c;
 
-  /* A hairline has to work harder on a dark panel to be seen at all. */
-  --accent-edge: rgba(88, 101, 242, 0.42);
-  --good-edge: rgba(35, 165, 90, 0.38);
-  --warn-edge: rgba(240, 178, 50, 0.4);
-  --bad-edge: rgba(242, 63, 67, 0.35);
+  --accent-edge: transparent;
+  --good-edge: transparent;
+  --warn-edge: transparent;
+  --bad-edge: transparent;
 
   color-scheme: dark;
 }
@@ -515,9 +420,9 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--hairline);
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 16px 12px;
+  background: var(--page);
+  border-bottom: 0;
 }
 
 .brand {
@@ -532,29 +437,30 @@ button {
 .brand-name {
   font-size: 20px;
   font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .header-tools {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 /*
- * Discord's presence chip. Not a bordered tag: a filled well with a status dot
- * in it, the same object that sits under an avatar in the member list.
+ * Modern rounded container status pill.
  */
 .status-tag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px 4px 8px;
+  padding: 6px 12px 6px 10px;
   border-radius: var(--r-full);
-  background: var(--surface-sunken);
+  background: var(--surface);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink-2);
   white-space: nowrap;
+  border: 0;
 }
 
 .beacon {
@@ -665,8 +571,9 @@ button {
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
   padding: 0 4px calc(env(safe-area-inset-bottom, 0px));
-  background: var(--surface);
-  border-top: 1px solid var(--hairline);
+  background: var(--page);
+  border-top: 0;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.03);
 }
 
 .tab {
@@ -674,9 +581,9 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  /* 56px of bar, which is the height Discord gives its own. */
-  padding: 9px 2px 8px;
+  gap: 3px;
+  /* 56px of bar */
+  padding: 10px 2px 8px;
   border: 0;
   background: none;
   color: var(--ink-muted);
@@ -687,7 +594,7 @@ button {
 
 .tab.active {
   color: var(--ink);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .tab:active {
@@ -696,12 +603,6 @@ button {
 
 /*
  * The travelling indicator.
- *
- * Discord marks the selected server with a white pill against the rail rather
- * than by tinting the icon, and that pill stretches and slides between servers
- * instead of cross-fading. This is that pill, laid on its side above the tab
- * this app is on, moved by Motion's `layoutId`. A pill that slides tells you
- * which way you just went; a cross-fade tells you nothing.
  */
 .tab-pill {
   position: absolute;
@@ -723,18 +624,17 @@ button {
 }
 
 /*
- * Discord's mention badge. Red, round, and ringed in the bar's own colour so
- * it punches a hole rather than sitting on top of the icon.
+ * Notification badge.
  */
 .tab-dot {
   position: absolute;
   top: 8px;
   left: 50%;
   margin-left: 6px;
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  border: 2px solid var(--surface);
+  border: 2px solid var(--page);
 }
 
 .tab-dot.tone-warn {
@@ -752,33 +652,31 @@ button {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  padding: 2px 0 0;
+  padding: 4px 0 2px;
 }
 
 .page-header h1 {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   line-height: 1.2;
 }
 
 /* -- card ------------------------------------------------------------------ */
 
 /*
- * Discord separates a panel from the page by surface value, not by outline.
- * In light that is white on grey, in dark the card is simply lighter than the
- * page, and in neither is there a stroked box - which is why the edge in light
- * is the ring inside `--shadow-card` rather than a border. A border plus a
- * shadow was two draws of the same top edge in two greys; one of them had to
- * go, and the one that stays is the one that also lifts the card off the page.
+ * Borderless container cards (Fintech style).
+ * The card is a soft grey surface, distinct from the white page, with zero borders.
  */
 .card {
   background: var(--surface);
   border-radius: var(--r);
-  padding: 16px;
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  box-shadow: var(--shadow-card);
+  gap: 14px;
+  border: 0;
+  box-shadow: none;
 }
 
 .card-head {
@@ -791,8 +689,6 @@ button {
 
 /*
  * Centred while the title is one line, top-aligned the moment it is two.
- * A "Breakdown" sitting halfway down a two-line heading looks dropped; level
- * with the heading's own first line, it looks placed.
  */
 .card-head:has(.card-meta) {
   align-items: flex-start;
@@ -806,14 +702,13 @@ button {
 }
 
 .card-head h2 {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 /*
- * The window the card's figures are totals over. Quiet on purpose: it is
- * there to be found by anyone who doubts the number above it, not to compete
- * with it.
+ * The window the card's figures are totals over.
  */
 .card-meta {
   font-size: 12px;
@@ -825,26 +720,17 @@ button {
 /* -- hero ------------------------------------------------------------------ */
 
 /*
- * A plain card. It carries no tone of its own.
- *
- * There used to be a 4px tinted bar down the leading edge, and it was the
- * third thing on the card saying the same word: the dot is amber, the tag
- * reads "On battery", the headline reads "Light is off". A full-height stripe
- * of state colour on an otherwise neutral card is decoration wearing the
- * clothes of information, and stacked three-deep down a screen it is the
- * loudest thing on it while telling you nothing the row above it did not.
- *
- * The tone still reaches the beacon through `data-tone` on this element - see
- * the beacon rules above. That dot is 8px, and it is enough.
+ * Borderless hero container card.
  */
 .hero {
   background: var(--surface);
   border-radius: var(--r);
-  padding: 16px;
+  padding: 18px 20px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  box-shadow: var(--shadow-card);
+  gap: 10px;
+  border: 0;
+  box-shadow: none;
 }
 
 .hero-tag {
@@ -936,35 +822,27 @@ button {
 .stat-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
 }
 
-/* No icon per tile. The label already says what it is. */
+/*
+ * Container tile inside the card.
+ * In light mode, this renders a clean white tile on the soft-grey card surface.
+ */
 .stat {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 3px;
   min-width: 0;
   flex: 1 1 136px;
-  padding: 10px 12px;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--panel-edge);
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 0;
+  background: var(--surface-2);
 }
 
 /*
  * The label and the change on one line, the figure alone on the line below.
- * Taken from the workout app's metric cards, and for the reason they do it: a
- * tinted pill set beside the value competes with it, and the value is the
- * thing being read.
- *
- * Pushed against the label rather than out to the tile's right edge, which is
- * where the reference puts it. That works there because its metrics sit in
- * drawn boxes; these tiles are separated by air, so a pill at the far edge of
- * an invisible column floats between two of them and reads as belonging to
- * whichever you looked at first.
- *
- * The min-height holds the line even on tiles with no change to report, so a
- * row of figures still starts on one baseline.
  */
 .stat-head {
   display: flex;
@@ -979,27 +857,21 @@ button {
 
 .stat-label {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink-muted);
 }
 
 .stat-value {
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1.25;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
 
 /*
  * The one place a reading is allowed to break.
- *
- * `.fig` refuses to wrap on purpose - a duration split across two lines reads
- * as two durations. But a tile is a fixed box now, and this is where the app
- * puts values that are not single readings at all: three cut times joined by
- * commas, a runtime beside its unit. Held on one line they ran straight
- * through the tile's right edge, which the borderless version simply did not
- * show. A break at a comma or a space beats a value hanging outside its box.
  */
 .stat-value .fig {
   white-space: normal;
@@ -1007,33 +879,23 @@ button {
 
 .stat-hint {
   font-size: 12px;
+  font-weight: 500;
   color: var(--ink-muted);
 }
 
 /* -- badge ----------------------------------------------------------------- */
 
-/*
- * Discord's role pill with the Tempo tag's third part fitted to it.
- *
- * Discord draws a tag as a wash and a label. The Figma sheet draws it as a
- * wash, a label, and a border a step stronger than the wash - every tag in it
- * carries a `tag-*-border` - and that border is the part this app was missing.
- * A `--*-wash` here is 10-15% alpha, and a badge sits on cards that are
- * already `--surface-sunken`, so at that alpha it has no edge: it stops being
- * an object on the card and reads as a run of coloured text. The hairline is
- * the same hue at full strength, held to about a third.
- */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: var(--r-full);
-  border: 1px solid var(--hairline-strong);
+  border: 0;
   background: var(--surface-sunken);
   color: var(--ink-2);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -1050,22 +912,18 @@ button {
 
 .badge.tone-good {
   background: var(--good-wash);
-  border-color: var(--good-edge);
   color: var(--good-ink);
 }
 .badge.tone-warn {
   background: var(--warn-wash);
-  border-color: var(--warn-edge);
   color: var(--warn-ink);
 }
 .badge.tone-bad {
   background: var(--bad-wash);
-  border-color: var(--bad-edge);
   color: var(--bad-ink);
 }
 .badge.tone-accent {
   background: var(--accent-wash);
-  border-color: var(--accent-edge);
   color: var(--accent-ink);
 }
 
@@ -1174,7 +1032,7 @@ button {
 /* Discord's "link" button: text only, underlined on hover, no fill ever. */
 .btn-ghost {
   background: transparent;
-  color: var(--accent-ink);
+  color: var(--text-btn-ink);
   padding-inline: 8px;
 }
 
@@ -1197,7 +1055,7 @@ button {
   border: 0;
   padding: 0;
   align-self: flex-start;
-  color: var(--accent-ink);
+  color: var(--text-btn-ink);
   font-size: 14px;
   font-weight: 500;
 }
@@ -1341,7 +1199,7 @@ button {
 .segmented-btn.active {
   background: var(--raised);
   color: var(--btn-2-ink);
-  box-shadow: 0 0 0 1px var(--hairline-strong), var(--shadow-sm);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 /*
@@ -1473,17 +1331,6 @@ button {
 
 /* -- chips ----------------------------------------------------------------- */
 
-/*
- * A chip is a capsule; the segmented control is a track with a pill inside it.
- * The difference is the Figma file's own, and it is worth keeping, because the
- * shape carries the grammar: drawing the options inside one track says exactly
- * one of them is true, and a loose row of capsules says any number can be.
- *
- * Selected is a wash and a blurple edge rather than a solid blurple fill. Four
- * chips with one of them filled pulls the eye to the filter, and on the screen
- * this was built for - the device roster - the counts inside the chips are the
- * thing worth reading first.
- */
 .chip-group {
   display: flex;
   flex-wrap: wrap;
@@ -1498,14 +1345,13 @@ button {
   height: 32px;
   padding: 0 12px;
   border-radius: var(--r-full);
-  border: 1px solid var(--hairline-strong);
+  border: 0;
   background: var(--surface-sunken);
   color: var(--ink-2);
   font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
-  transition: background var(--d-fast) var(--ease-standard),
-    border-color var(--d-fast) var(--ease-standard), color var(--d-fast) var(--ease-standard);
+  transition: background var(--d-fast) var(--ease-standard), color var(--d-fast) var(--ease-standard);
 }
 
 .chip:hover:not(:disabled),
@@ -1521,7 +1367,6 @@ button {
 .chip.is-on,
 .chip-removable.is-on {
   background: var(--accent-wash);
-  border-color: var(--accent-edge);
   color: var(--accent-ink);
 }
 
@@ -1862,9 +1707,9 @@ button {
  * reading as decoration.
  */
 .notice {
-  padding: 9px 11px 9px 13px;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--panel-edge);
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 0;
   border-left: 4px solid var(--ink-faint);
   font-size: 14px;
   line-height: 1.45;
@@ -1873,53 +1718,33 @@ button {
 
 .notice-good {
   background: var(--good-wash);
-  border-color: var(--good-edge);
   border-left-color: var(--good);
   color: var(--good-ink);
 }
 .notice-warn,
 .notice-stale {
   background: var(--warn-wash);
-  border-color: var(--warn-edge);
   border-left-color: var(--warn);
   color: var(--warn-ink);
 }
 .notice-bad {
   background: var(--bad-wash);
-  border-color: var(--bad-edge);
   border-left-color: var(--bad);
   color: var(--bad-ink);
 }
 .notice-info {
   background: var(--accent-wash);
-  border-color: var(--accent-edge);
   border-left-color: var(--accent);
   color: var(--accent-ink);
 }
 
 /* -- verdict --------------------------------------------------------------- */
 
-/*
- * A reading of the evidence, set as a sentence.
- *
- * This was a filled green callout with a bar down its edge - the same
- * treatment the app gives "your pack is nearly flat", spent on the sentence
- * "this is what a healthy line looks like". A tinted panel is a claim on
- * attention, and roughly ninety-five days in a hundred the claim being made
- * here is that nothing is wrong, so the panel is decoration; worse, a shape
- * that has cried wolf for a month is the exact shape that gets skipped on the
- * morning the tone flips to red.
- *
- * So the colour shrinks to the 8px dot the rest of the app already uses for
- * state, the sentence is left as a sentence, and a hairline puts it where it
- * belongs - as the lead over the three numbers it is a summary of, rather than
- * as a box floating above them.
- */
 .verdict {
   display: flex;
   gap: 10px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 6px;
+  border-bottom: 0;
   font-size: 14px;
   line-height: 1.5;
   color: var(--ink-2);
@@ -1938,11 +1763,6 @@ button {
   background: var(--bad);
 }
 
-/*
- * The bad case is not a whisper. It does not get a panel back, but it gets
- * full-strength ink and a step of weight, which is enough to stop the eye on
- * a card whose every other line is grey.
- */
 .verdict[data-tone='bad'] {
   color: var(--ink);
   font-weight: 500;
@@ -2106,14 +1926,14 @@ button {
   color: var(--ink-2);
 }
 
-/* Discord's inset panel, outlined rather than filled - see `--panel-edge`. */
 .restore {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 11px 13px;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--panel-edge);
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  border: 0;
 }
 
 .restore-head {
@@ -2268,7 +2088,6 @@ button {
     transparent 2px,
     transparent 4px
   );
-  box-shadow: inset 0 0 0 1px var(--hairline);
 }
 
 .heatmap-scale-gap {
@@ -2290,7 +2109,6 @@ button {
     transparent 2px,
     transparent 4px
   );
-  box-shadow: inset 0 0 0 1px var(--hairline);
 }
 
 .heatmap-cell:hover,
@@ -2385,14 +2203,16 @@ button {
   align-items: baseline;
   justify-content: space-between;
   gap: 14px;
-  padding: 9px 0;
-  border-bottom: 1px solid var(--hairline);
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border-radius: var(--r-sm);
+  margin-bottom: 6px;
+  border-bottom: 0;
   font-size: 13px;
 }
 
 .device-facts > div:last-child {
-  border-bottom: 0;
-  padding-bottom: 0;
+  margin-bottom: 0;
 }
 
 .device-facts dt {
@@ -2603,13 +2423,13 @@ button {
   width: 100%;
 }
 
-/* Discord's empty state: one line, in the same outlined panel as the rest. */
 .chart-empty {
   display: grid;
   place-items: center;
-  padding: 27px 15px;
-  border-radius: var(--r-sm);
-  border: 1px solid var(--panel-edge);
+  padding: 28px 16px;
+  border-radius: var(--r-md);
+  border: 0;
+  background: var(--surface-2);
   color: var(--ink-muted);
   font-size: 14px;
   text-align: center;
@@ -2809,9 +2629,9 @@ button {
 .bars {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding-top: 12px;
-  border-top: 1px solid var(--hairline);
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 0;
 }
 
 .bars-readout {
@@ -2978,10 +2798,10 @@ button {
 code {
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
   font-size: 12px;
-  padding: 1px 5px;
+  padding: 2px 6px;
   border-radius: var(--r-xs);
   background: var(--surface-sunken);
-  border: 1px solid var(--hairline-strong);
+  border: 0;
   overflow-wrap: anywhere;
 }
 
@@ -3011,10 +2831,10 @@ code {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   border-radius: var(--r-md);
   background: var(--surface);
-  border: 1px solid var(--hairline);
+  border: 0;
   box-shadow: var(--shadow-pop);
   font-size: 14px;
   font-weight: 500;
@@ -3022,7 +2842,7 @@ code {
 }
 
 :root[data-theme='dark'] .toast {
-  border-color: transparent;
+  border: 0;
 }
 
 .toast-icon {
@@ -3057,17 +2877,17 @@ code {
 }
 
 /*
- * The action slot. It is the last thing in the row and the only thing in it
- * that is blurple, which is the whole trick - the toast can be read and
- * ignored, and the one word that undoes something is still findable at a
- * glance.
+ * The action slot. It is the last thing in the row, and the only thing in it
+ * set in the full ink at 600 - which is the whole trick, now that it is no
+ * longer blue: the toast can be read and ignored, and the one word that undoes
+ * something is still findable at a glance.
  */
 .toast-action {
   flex: none;
   border: 0;
   padding: 0 2px;
   background: none;
-  color: var(--accent-ink);
+  color: var(--text-btn-ink);
   font-size: 14px;
   font-weight: 600;
 }
@@ -3130,11 +2950,12 @@ code {
   padding: 24px;
   border-radius: var(--r);
   background: var(--surface);
-  border: 1px solid var(--hairline);
+  border: 0;
+  box-shadow: var(--shadow-pop);
 }
 
 :root[data-theme='dark'] .crash-card {
-  border-color: transparent;
+  border: 0;
 }
 
 .crash-card h1 {
@@ -3500,16 +3321,17 @@ code {
 .line-head {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px;
+  gap: 16px;
+  padding: 18px 20px;
   border-radius: var(--r);
   background: var(--surface);
-  box-shadow: var(--shadow-card);
+  border: 0;
+  box-shadow: none;
 }
 
 .line-head-top {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
@@ -3518,7 +3340,7 @@ code {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -3533,25 +3355,16 @@ code {
   min-width: 0;
 }
 
-/*
- * The gateway's portrait, where a tinted disc used to be. It needs no plate
- * behind it - the art carries its own gradients and contact shadow, and a
- * wash-filled circle under a lit object reads as two backgrounds.
- *
- * The negative margins take back the portrait's own whitespace: the drawing
- * is a 30-unit-wide object on a 64-unit square canvas, so about ten pixels of
- * empty frame sit on each side at this size. Without them the mark floats off
- * the card's padding edge and twice the gap from the name.
- */
 .line-mark {
   flex: none;
   margin: -4px -10px;
 }
 
 .line-name {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   line-height: 1.25;
+  letter-spacing: -0.01em;
 }
 
 .line-sub {
@@ -3560,26 +3373,24 @@ code {
   font-variant-numeric: tabular-nums;
 }
 
-/*
- * The quiet second action, sat where the reference puts "Switch network". It
- * is the same shape as `.see-all` with the icon leading, because this one is
- * a thing to do rather than a way out of the section.
- */
+/* Squircle pill action button (matches screenshot's action buttons) */
 .line-switch {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 2px 0;
-  background: none;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--surface-2);
   border: 0;
+  border-radius: var(--r-full);
   font-size: 13px;
   font-weight: 600;
-  color: var(--accent-ink);
-  transition: opacity var(--d-fast) var(--ease-standard);
+  color: var(--text-btn-ink);
+  transition: opacity var(--d-fast) var(--ease-standard), background var(--d-fast);
 }
 
 .line-switch:active {
-  opacity: 0.55;
+  background: var(--surface-3);
+  transform: scale(0.96);
 }
 
 .line-switch:disabled {
@@ -3587,18 +3398,7 @@ code {
 }
 
 /*
- * The dial.
- *
- * Two rings and a wash: a solid inner edge that makes it an object, and a
- * softer ring outside it that is the whole reason the eye lands here first.
- *
- * Green, by request. It was drawn in the accent for a reason worth writing
- * down before it is changed again: green elsewhere on this screen is a verdict
- * about the line - "the light is on", "the line is up" - and a button is not a
- * verdict. What keeps that from misfiring here is that this is the only round
- * green object on the page, it carries a speedometer rather than a tick, and
- * the word under it is an instruction. If a green pill or dot ever lands in
- * this strip, that is the moment to take this back to the accent.
+ * Speed test action button (modern soft squircle container)
  */
 .dial {
   display: flex;
@@ -3614,24 +3414,21 @@ code {
 .dial-ring {
   display: grid;
   place-items: center;
-  width: 62px;
-  height: 62px;
-  border-radius: var(--r-full);
-  background: var(--surface);
-  color: var(--good-ink);
-  box-shadow:
-    inset 0 0 0 2px var(--good-edge),
-    0 0 0 5px var(--good-wash);
+  width: 58px;
+  height: 58px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--good);
+  box-shadow: none;
+  border: 0;
   transition:
     transform var(--d-fast) var(--ease-standard),
-    box-shadow var(--d-fast) var(--ease-standard);
+    background var(--d-fast) var(--ease-standard);
 }
 
 .dial:active .dial-ring {
-  transform: scale(0.94);
-  box-shadow:
-    inset 0 0 0 2px var(--good),
-    0 0 0 5px var(--good-wash);
+  transform: scale(0.93);
+  background: var(--surface-3);
 }
 
 .dial:disabled {
@@ -3645,58 +3442,32 @@ code {
 }
 
 /*
- * The measurement strip, label first and value after it on one line - which is
- * the shape the reference uses and the opposite of `.key-figure`, where the
- * number leads and the word explains it afterwards. Here the two words are
- * doing the telling apart, so they come first.
+ * The measurement strip - clean container cards
  */
 .line-figures {
-  /*
-   * Even columns rather than `space-between`, because each pair has a shape
-   * under it and a shape has to be given a width - left to size itself off the
-   * words above it, the wider label would have drawn the longer chart.
-   *
-   * Three of them now. On a 375px phone that is a 97px column, which the
-   * longest reading here - "25.4 Mbps" - clears at about 63px because the unit
-   * and the decimal are set down (see `.fig-u`). The column gap comes down
-   * from 12px to 10px to pay for the extra divide.
-   */
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  align-items: start;
-  gap: 6px 10px;
-  padding-top: 12px;
-  border-top: 1px solid var(--hairline);
+  align-items: stretch;
+  gap: 8px;
+  padding-top: 0;
+  border-top: 0;
 }
 
 :root[data-theme='dark'] .line-figures {
-  border-top-color: var(--hairline-strong);
+  border-top-color: transparent;
 }
 
-/*
- * Stacked, and always - label, then value, then the shape.
- *
- * This used to be a wrapping row that only stacked when it ran out of room,
- * which worked while the strip was two pairs of words sharing its full width.
- * In half of it they no longer wrap alike: "DOWNLOAD" is four characters
- * longer than "UPLOAD", so the left pair broke and the right one did not, and
- * the two charts came to rest at different heights. Stacking both is what
- * makes them a pair again.
- *
- * It also keeps the fix this rule was written for. The first attempt was a
- * `max-width: 340px` media query, which never fired: nothing here could
- * shrink, so the strip set the page's width instead of the page setting the
- * strip's, the layout viewport came out wider than the screen, and every card
- * on Home was clipped down the right-hand edge. A column's min-content width
- * is the widest of its three lines, which is narrower still than the wrap was.
- */
 .line-figure {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
   font-size: 17px;
   font-weight: 700;
+  background: var(--surface-2);
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  border: 0;
 }
 
 /*
@@ -3821,13 +3592,14 @@ code {
 }
 
 .block + .block {
-  padding-top: 14px;
-  border-top: 1px solid var(--hairline);
+  padding-top: 18px;
+  border-top: 0;
 }
 
 .block h3 {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 /* The line under a card head that says what the card is for. */
@@ -3965,7 +3737,9 @@ code {
   inset: 0;
   border: 0;
   padding: 0;
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
 }
 
 .sheet {
@@ -3973,11 +3747,11 @@ code {
   max-height: 88vh;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
+  gap: 14px;
+  padding: 12px 18px calc(18px + env(safe-area-inset-bottom));
   background: var(--page);
   border-radius: var(--r-lg) var(--r-lg) 0 0;
-  box-shadow: var(--shadow-pop);
+  box-shadow: 0 -14px 44px rgba(0, 0, 0, 0.12);
 }
 
 .sheet-grip {
@@ -4136,25 +3910,30 @@ code {
 .figure-row {
   display: flex;
   align-items: stretch;
+  gap: 8px;
   padding: 2px 0;
 }
 
 .key-figure {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   flex: 1;
   min-width: 0;
+  background: var(--surface-2);
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 0;
 }
 
 .key-figure + .key-figure {
-  border-left: 1px solid var(--hairline);
-  padding-left: 14px;
-  margin-left: 14px;
+  border-left: 0;
+  padding-left: 12px;
+  margin-left: 0;
 }
 
 :root[data-theme='dark'] .key-figure + .key-figure {
-  border-left-color: var(--hairline-strong);
+  border-left-color: transparent;
 }
 
 .key-figure-value {
@@ -4164,28 +3943,21 @@ code {
   min-width: 0;
 }
 
-/* Sentence case. The reference apps track this out in caps; that is the one
-   translation this app refuses, everywhere. */
+/* Sentence case. */
 .key-figure-label {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--ink-muted);
 }
 
 /* -- delta ------------------------------------------------------------------ */
 
-/*
- * Small, tabular, and carrying an arrow as well as a sign - the arrow is what
- * survives being read in greyscale, and the tone is what makes it quick.
- * Raised off the baseline so it sits against the top of the figure beside it
- * rather than hanging under it.
- */
 .delta {
   display: inline-flex;
   align-items: center;
-  gap: 1px;
-  padding: 1px 7px 1px 5px;
-  border: 1px solid var(--hairline-strong);
+  gap: 2px;
+  padding: 2px 8px;
+  border: 0;
   border-radius: var(--r-full);
   background: var(--surface-sunken);
   color: var(--ink-2);
@@ -4202,26 +3974,16 @@ code {
 
 .delta.tone-good {
   background: var(--good-wash);
-  border-color: var(--good-edge);
   color: var(--good-ink);
 }
 
 .delta.tone-bad {
   background: var(--bad-wash);
-  border-color: var(--bad-edge);
   color: var(--bad-ink);
 }
 
 /* -- day grid --------------------------------------------------------------- */
 
-/*
- * Thirty days in three rows, oldest first.
- *
- * Ten to a row rather than seven: the weekday reading is already covered by
- * the heatmap above, and what this is for is the run - whether the bad days
- * were last week or last month. Aligning to weeks would cost a row of padding
- * cells to say something said better elsewhere.
- */
 .day-grid-wrap {
   display: flex;
   flex-direction: column;
@@ -4234,12 +3996,6 @@ code {
   gap: 4px;
 }
 
-/*
- * Square, but never taller than a row of text. At thirty days across ten
- * columns a square cell is about 30px and the cap never comes into it; at
- * seven days across seven columns it would otherwise be a 46px block, and a
- * week of those reads as a chart rather than as a strip of days.
- */
 .day-cell {
   position: relative;
   aspect-ratio: 1;
@@ -4249,10 +4005,6 @@ code {
   overflow: hidden;
 }
 
-/*
- * The colour sits on an overlay rather than on the cell itself, so the sunken
- * well underneath stays the base for the outlined "not watched" state below.
- */
 .day-cell::before {
   content: '';
   position: absolute;
@@ -4272,14 +4024,11 @@ code {
   background: var(--accent);
 }
 
-/*
- * Nothing recorded is an outline, never a pale fill. A monitor that was
- * switched off must not be able to look like a day that went well.
- */
 .day-cell.tone-none,
 .day-cell.tone-neutral {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  background: var(--surface-sunken);
+  opacity: 0.35;
+  box-shadow: none;
 }
 
 .day-cell.tone-none::before,
@@ -4287,8 +4036,7 @@ code {
   background: none;
 }
 
-/* Today is marked by a ring outside the cell, so it can carry a state colour
-   and still be findable. */
+/* Today is marked by a ring outside the cell */
 .day-cell.is-today {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
@@ -4305,6 +4053,7 @@ code {
 .list {
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 
 .list-row {
@@ -4312,28 +4061,33 @@ code {
   align-items: center;
   gap: 12px;
   width: 100%;
-  padding: 10px 0;
-  background: none;
+  padding: 10px 12px;
+  background: var(--surface-2);
   border: 0;
-  border-bottom: 1px solid var(--hairline);
+  border-radius: var(--r-md);
   text-align: left;
   color: inherit;
+  /*
+   * One height, whatever is in it. The icon set the height on every row that
+   * had one and nothing set it on the rows that did not, so a list mixing the
+   * two stepped up and down as it was read.
+   */
+  min-height: 58px;
+  transition: background var(--d-fast) var(--ease-standard);
 }
 
 .list > li:last-child .list-row,
 .list > .list-row:last-child {
   border-bottom: 0;
-  padding-bottom: 0;
 }
 
-/* Rounded square, Discord's icon container - circles are for avatars only. */
 .list-icon {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   flex: none;
-  border-radius: var(--r-md);
+  border-radius: 12px;
   background: var(--surface-sunken);
   color: var(--ink-muted);
 }
@@ -4361,18 +4115,35 @@ code {
   gap: 1px;
   flex: 1;
   min-width: 0;
+  line-height: 1.3;
 }
 
+/*
+ * One line, always.
+ *
+ * Running the eye down a column is the whole job of a list, and it cannot be
+ * done past rows that are two, three and four lines tall - the feed was
+ * setting "Could not tell what was powering the router" over four lines and
+ * "Monitor was off" over one, directly above each other. Every reference app
+ * truncates here instead, because the head of the sentence is what the row is
+ * found by; the tail is what the detail view is for.
+ */
 .list-title {
   font-size: 15px;
   font-weight: 500;
   color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .list-sub {
   font-size: 12px;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .list-value {
@@ -4382,10 +4153,32 @@ code {
   gap: 1px;
   flex: none;
   text-align: right;
+  /* It is the fixed edge the whole list aligns on; it does not get to reflow. */
+  white-space: nowrap;
 }
 
+/*
+ * Block, and with a line-height of its own.
+ *
+ * It sets no font-size, so as an inline box it inherited the row's 15px and
+ * carried a 23px strut whatever was actually inside it - a 14px figure or a
+ * 12px clock made no difference. Stacked over a sub, that strut alone was
+ * enough to out-measure the 38px icon and stand those rows 60px tall in a
+ * list of 58s, which is the sort of two-pixel step that reads as sloppiness
+ * without ever being visible as a number.
+ */
 .list-value-main {
+  display: block;
+  font-size: 14px;
+  line-height: 1.35;
   color: var(--ink);
+}
+
+.list-when {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .list-value-sub {
@@ -4419,7 +4212,7 @@ button.list-row:active {
   border: 0;
   font-size: 13px;
   font-weight: 600;
-  color: var(--accent-ink);
+  color: var(--text-btn-ink);
   transition: opacity var(--d-fast) var(--ease-standard);
 }
 
