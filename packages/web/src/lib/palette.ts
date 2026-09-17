@@ -15,9 +15,15 @@ import type { ResolvedTheme } from './theme.ts';
 
 export type SeriesSlot = 0 | 1 | 2 | 3;
 
+/*
+ * Slot 0 is also `--lane-ping` in styles.css. The round-trip chart leads with
+ * it, and the latency sparkline on Home is the shape a reader meets before
+ * they go looking for that chart, so the two have to be one blue. The other
+ * three slots answer to nothing outside this file.
+ */
 const SERIES: Record<ResolvedTheme, [string, string, string, string]> = {
-  light: ['#2A78D6', '#1BAF7A', '#4A3AA7', '#E87BA4'],
-  dark: ['#3987E5', '#199E70', '#9085E9', '#D55181'],
+  light: ['#3B82F6', '#1BAF7A', '#4A3AA7', '#E87BA4'],
+  dark: ['#3B82F6', '#199E70', '#9085E9', '#D55181'],
 };
 
 export function seriesColor(theme: ResolvedTheme, slot: number): string {
@@ -46,11 +52,15 @@ export function seriesColor(theme: ResolvedTheme, slot: number): string {
  * from a red at all.
  *
  * Keep in step with `--lane-down` / `--lane-up` in styles.css, which is where
- * the CSS-drawn sparklines read the same two values from.
+ * the CSS-drawn sparklines read the same two values from. Both themes now hold
+ * the same pair, because that is what those two custom properties hold: the
+ * theme refresh stopped brightening them for dark, and a chart drawing one
+ * green while the sparkline above it drew another is the reason this note
+ * exists.
  */
 const DIRECTIONAL: Record<ResolvedTheme, { down: string; up: string }> = {
-  light: { down: '#12996A', up: '#C4384F' },
-  dark: { down: '#3BC489', up: '#E8606E' },
+  light: { down: '#10B981', up: '#EF4444' },
+  dark: { down: '#10B981', up: '#EF4444' },
 };
 
 export function directionColor(theme: ResolvedTheme, direction: 'down' | 'up'): string {
