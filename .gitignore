@@ -17,3 +17,8 @@ page_dumps/
 # only one the build loads - see the single @font-face in packages/web/src/styles.css.
 packages/web/public/fonts/*
 !packages/web/public/fonts/Inter-Variable.woff2
+
+# Screenshots of the running app, captured against the real household network:
+# they carry device names, a MAC and the ONT's firmware build. Kept local
+# rather than published, since nothing about building this repo needs them.
+screens/
