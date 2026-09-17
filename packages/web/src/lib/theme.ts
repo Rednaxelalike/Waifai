@@ -40,7 +40,7 @@ export function resolve(choice: ThemeChoice): ResolvedTheme {
 
 /** The colour the browser paints behind the app - status bar, overscroll. */
 /* Matches the app header, which is what the status bar sits against. */
-const GROUND: Record<ResolvedTheme, string> = { light: '#FFFFFF', dark: '#2B2D31' };
+const GROUND: Record<ResolvedTheme, string> = { light: '#FFFFFF', dark: '#090A0C' };
 
 export function applyTheme(choice: ThemeChoice): ResolvedTheme {
   const resolved = resolve(choice);
